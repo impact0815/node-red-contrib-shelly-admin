@@ -1,0 +1,9 @@
+<script type="text/html" data-help-name="shelly-admin-config">
+  <p>Gemeinsame Konfiguration und Laufzeit für Erkennung, Inventar, Historie, Gesundheitsanalyse und abgesicherte Geräteaktionen.</p>
+  <p><strong>⚠️ Nutzung auf eigene Gefahr – keine Gewährleistung.</strong> Dieses inoffizielle Community-Projekt steht in keiner Verbindung zu Shelly oder Allterco und wird „wie besehen“ bereitgestellt. Es ist kein zertifiziertes Brandschutzsystem.</p>
+  <p>Ziele können CIDR-Netze, vollständige oder verkürzte IP-Bereiche, Einzeladressen sowie mehrere durch Komma oder Zeilenumbruch getrennte Einträge sein. Automatisch erkannte Schnittstellennetze werden durch Präfix- und Adresslimit begrenzt.</p>
+  <p><code>contextStore</code> muss den Namen eines Node-RED-Context-Stores angeben, vorzugsweise <code>localfilesystem</code> (oft <code>file</code>). Es wird ausschließlich die unterstützte Context-API verwendet. Ist der Store nicht verfügbar, wird auf den Standard-Store zurückgefallen und die nicht verifizierte Dauerhaftigkeit gemeldet.</p>
+  <p>Richtlinien sind ein JSON-Array. Eine temperaturbedingte Abschaltung wird nur bei exakter Zuordnung per <code>id</code>, <code>ip</code> oder <code>mac</code> und bei explizitem Aktionsmodus akzeptiert. Beispiel:</p>
+  <pre>[{"match":{"id":"shellyplus1pm-aabbcc"},"policy":{"temperature":{"warningC":70,"criticalC":85,"autoShutdown":false,"outputs":[0]}}}]</pre>
+  <p>Es erfolgt niemals ein automatisches Wiedereinschalten. APIs und Firmware können sich ändern. Zuerst Probelauf verwenden, gestaffelt ausrollen, riskante Aktionen beaufsichtigen und fachgerecht installierte Elektrik einsetzen.</p>
+</script>

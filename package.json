@@ -1,0 +1,65 @@
+{
+  "name": "@impact0815/node-red-contrib-shelly-admin",
+  "version": "0.1.0",
+  "description": "Local discovery, inventory, health monitoring, anomaly hints, and safeguarded maintenance for Shelly Gen1 and Gen2+ devices in Node-RED.",
+  "keywords": [
+    "node-red",
+    "shelly",
+    "iot",
+    "discovery",
+    "monitoring",
+    "firmware",
+    "maintenance"
+  ],
+  "license": "MIT",
+  "author": "impact0815",
+  "contributors": [
+    "impact0815"
+  ],
+  "homepage": "https://github.com/impact0815/node-red-contrib-shelly-admin#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/impact0815/node-red-contrib-shelly-admin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/impact0815/node-red-contrib-shelly-admin/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "main": "lib/runtime.js",
+  "files": [
+    "lib/",
+    "nodes/",
+    "examples/",
+    "README.md",
+    "README.de.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "NOTICE.md",
+    "BUILD-INFO.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:coverage": "node --test --experimental-test-coverage test/*.test.js",
+    "lint": "node tools/lint.js",
+    "check": "npm run lint && npm test && npm pack --dry-run",
+    "prepublishOnly": "npm run check"
+  },
+  "devDependencies": {},
+  "node-red": {
+    "version": ">=3.1.0",
+    "nodes": {
+      "shelly-admin-config": "nodes/shelly-admin-config.js",
+      "shelly-admin-discovery": "nodes/shelly-admin-discovery.js",
+      "shelly-admin-monitor": "nodes/shelly-admin-monitor.js",
+      "shelly-admin-maintenance": "nodes/shelly-admin-maintenance.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

@@ -1,0 +1,32 @@
+<script type="text/javascript">
+  RED.nodes.registerType("shelly-admin-discovery", {
+    category: "network",
+    color: "#E5A93D",
+    defaults: {
+      name: { value: "" },
+      admin: { value: "", type: "shelly-admin-config", required: true },
+      mode: { value: "incremental" },
+      scanOnStart: { value: true },
+      startDelaySeconds: { value: 2, validate: RED.validators.number() }
+    },
+    inputs: 1,
+    outputs: 3,
+    icon: "font-awesome/fa-search",
+    outputLabels: function (index) { return this._(["shelly-admin-discovery.output.inventory", "shelly-admin-discovery.output.events", "shelly-admin-discovery.output.errors"][index]); },
+    label: function () { return this.name || this._("shelly-admin-discovery.label.default"); },
+    paletteLabel: function () { return this._("shelly-admin-discovery.label.palette"); }
+  });
+</script>
+<script type="text/html" data-template-name="shelly-admin-discovery">
+  <div class="form-row"><label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="shelly-admin-discovery.label.name"></span></label><input type="text" id="node-input-name"></div>
+  <div class="form-row"><label for="node-input-admin"><i class="fa fa-cog"></i> <span data-i18n="shelly-admin-discovery.label.admin"></span></label><input type="text" id="node-input-admin"></div>
+  <div class="form-row"><label for="node-input-mode"><span data-i18n="shelly-admin-discovery.label.mode"></span></label><select id="node-input-mode"><option value="incremental" data-i18n="shelly-admin-discovery.option.incremental"></option><option value="full" data-i18n="shelly-admin-discovery.option.full"></option></select></div>
+  <div class="form-row"><label for="node-input-scanOnStart"><span data-i18n="shelly-admin-discovery.label.scanOnStart"></span></label><input type="checkbox" id="node-input-scanOnStart" style="width:auto"></div>
+  <div class="form-row"><label for="node-input-startDelaySeconds"><span data-i18n="shelly-admin-discovery.label.startDelaySeconds"></span></label><input type="number" id="node-input-startDelaySeconds" min="0"></div>
+</script>
+<script type="text/html" data-help-name="shelly-admin-discovery">
+  <p>Discovers Shelly Gen1 and Gen2+ devices and maintains the shared inventory. With an existing inventory, an initial scan validates known devices first; periodic full scans find additions.</p>
+  <p><code>msg.mode</code> may be <code>incremental</code>, <code>full</code>, or <code>initial</code>. <code>msg.targets</code> can temporarily provide individual IPs, ranges, CIDRs, or multiple entries.</p>
+  <p>Outputs: (1) complete structured inventory result, (2) discovery/change events, (3) errors. Ordinary closed ports are summarized instead of producing one error per scanned address.</p>
+  <p><strong>⚠️ Use at your own risk – no warranty.</strong> Unofficial community project, not affiliated with Shelly or Allterco; provided “as is”. Network scans must be authorized for the target network.</p>
+</script>

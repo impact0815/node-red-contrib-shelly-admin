@@ -1,0 +1,9 @@
+{
+  "shelly-admin-discovery": {
+    "label": { "default": "Shelly-Erkennung", "palette": "Shelly-Erkennung", "name": "Name", "admin": "Verwaltung", "mode": "Scanmodus", "scanOnStart": "Beim Start scannen", "startDelaySeconds": "Startverzögerung (s)" },
+    "option": { "incremental": "Inkrementell / validieren", "full": "Vollständige Inventarisierung" },
+    "output": { "inventory": "Inventar", "events": "Ereignisse", "errors": "Fehler" },
+    "status": { "scanning": "Scan läuft", "ready": "{{count}} Geräte", "error": "Scanfehler" },
+    "error": { "noConfig": "Eine gültige Shelly-Verwaltungskonfiguration ist erforderlich.", "busy": "Ein Erkennungsscan läuft bereits." }
+  }
+}

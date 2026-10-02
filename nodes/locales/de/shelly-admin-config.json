@@ -1,0 +1,41 @@
+{
+  "shelly-admin-config": {
+    "label": {
+      "default": "Shelly-Verwaltung",
+      "name": "Name",
+      "username": "Benutzername",
+      "password": "Passwort",
+      "targets": "Manuelle Ziele",
+      "autoSubnets": "Lokale Subnetze erkennen",
+      "minimumAutoPrefix": "Kleinste Auto-Präfixlänge",
+      "maxAddresses": "Adresslimit",
+      "timeoutMs": "HTTP-Zeitlimit (ms)",
+      "discoveryConcurrency": "Parallele Erkennung",
+      "monitorConcurrency": "Parallele Überwachung",
+      "fullScanIntervalHours": "Vollscan-Intervall (h)",
+      "contextStore": "Name des Context-Stores",
+      "rawRetentionHours": "Rohhistorie (h)",
+      "aggregateRetentionDays": "Aggregate (Tage)",
+      "bucketMinutes": "Aggregationsintervall (min)",
+      "anomalyMinSamples": "Baseline-Messwerte",
+      "anomalyWarmupSamples": "Warm-up-Messwerte",
+      "anomalyTriggerConsecutive": "Messwerte bis Auslösung",
+      "anomalyClearConsecutive": "Messwerte bis Entwarnung",
+      "anomalyCooldownMinutes": "Warnungs-Cooldown (min)",
+      "temperatureWarningC": "Temperaturwarnung (°C)",
+      "temperatureCriticalC": "Temperatur kritisch (°C)",
+      "temperatureHysteresisC": "Temperaturhysterese (°C)",
+      "temperatureConsecutive": "Temperatur-Messwerte",
+      "temperatureCooldownMinutes": "Temperatur-Cooldown (min)",
+      "policies": "Geräterichtlinien (JSON)"
+    },
+    "placeholder": { "targets": "192.168.1.0/24\n192.168.10.20-40\n10.0.0.8" },
+    "tip": { "policySafety": "Automatische Abschaltung ist nur nach expliziter Freigabe je Gerät aktiv. Kein automatisches Wiedereinschalten. Kein zertifiziertes Brandschutzsystem." },
+    "status": {
+      "loading": "Inventar wird geladen",
+      "readyPersistent": "{{count}} Geräte · persistent",
+      "readyVolatile": "{{count}} Geräte · flüchtig",
+      "error": "Konfigurationsfehler"
+    }
+  }
+}

@@ -1,0 +1,56 @@
+<script type="text/javascript">
+  RED.nodes.registerType("shelly-admin-maintenance", {
+    category: "network",
+    color: "#E5A93D",
+    defaults: {
+      name: { value: "" },
+      admin: { value: "", type: "shelly-admin-config", required: true },
+      action: { value: "check" },
+      deviceSelectors: { value: "" },
+      allowAll: { value: false },
+      dryRun: { value: true },
+      stage: { value: "stable" },
+      staggerSeconds: { value: 30, validate: RED.validators.number() },
+      waitBeforeValidationSeconds: { value: 5, validate: RED.validators.number() },
+      validationTimeoutSeconds: { value: 180, validate: RED.validators.number() },
+      conditionType: { value: "always" },
+      conditionValue: { value: "" },
+      failFast: { value: true },
+      scheduleHours: { value: 0, validate: RED.validators.number() },
+      scheduleMode: { value: "notify" },
+      automaticUpdates: { value: false }
+    },
+    inputs: 1,
+    outputs: 3,
+    icon: "font-awesome/fa-wrench",
+    outputLabels: function (index) { return this._(["shelly-admin-maintenance.output.result", "shelly-admin-maintenance.output.progress", "shelly-admin-maintenance.output.errors"][index]); },
+    label: function () { return this.name || this._("shelly-admin-maintenance.label.default"); },
+    paletteLabel: function () { return this._("shelly-admin-maintenance.label.palette"); }
+  });
+</script>
+<script type="text/html" data-template-name="shelly-admin-maintenance">
+  <div class="form-row"><label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="shelly-admin-maintenance.label.name"></span></label><input type="text" id="node-input-name"></div>
+  <div class="form-row"><label for="node-input-admin"><i class="fa fa-cog"></i> <span data-i18n="shelly-admin-maintenance.label.admin"></span></label><input type="text" id="node-input-admin"></div>
+  <div class="form-row"><label for="node-input-action"><span data-i18n="shelly-admin-maintenance.label.action"></span></label><select id="node-input-action"><option value="check" data-i18n="shelly-admin-maintenance.option.check"></option><option value="update" data-i18n="shelly-admin-maintenance.option.update"></option><option value="reboot" data-i18n="shelly-admin-maintenance.option.reboot"></option></select></div>
+  <div class="form-row"><label for="node-input-deviceSelectors"><span data-i18n="shelly-admin-maintenance.label.deviceSelectors"></span></label><textarea id="node-input-deviceSelectors" rows="3" style="width:70%"></textarea></div>
+  <div class="form-row"><label for="node-input-allowAll"><span data-i18n="shelly-admin-maintenance.label.allowAll"></span></label><input type="checkbox" id="node-input-allowAll" style="width:auto"></div>
+  <div class="form-row"><label for="node-input-dryRun"><span data-i18n="shelly-admin-maintenance.label.dryRun"></span></label><input type="checkbox" id="node-input-dryRun" style="width:auto"></div>
+  <div class="form-row"><label for="node-input-stage"><span data-i18n="shelly-admin-maintenance.label.stage"></span></label><select id="node-input-stage"><option value="stable">stable</option><option value="beta">beta</option></select></div>
+  <div class="form-row"><label for="node-input-staggerSeconds"><span data-i18n="shelly-admin-maintenance.label.staggerSeconds"></span></label><input type="number" id="node-input-staggerSeconds" min="0"></div>
+  <div class="form-row"><label for="node-input-waitBeforeValidationSeconds"><span data-i18n="shelly-admin-maintenance.label.waitBeforeValidationSeconds"></span></label><input type="number" id="node-input-waitBeforeValidationSeconds" min="1"></div>
+  <div class="form-row"><label for="node-input-validationTimeoutSeconds"><span data-i18n="shelly-admin-maintenance.label.validationTimeoutSeconds"></span></label><input type="number" id="node-input-validationTimeoutSeconds" min="10"></div>
+  <div class="form-row"><label for="node-input-conditionType"><span data-i18n="shelly-admin-maintenance.label.conditionType"></span></label><select id="node-input-conditionType"><option value="always" data-i18n="shelly-admin-maintenance.option.always"></option><option value="restartRequired" data-i18n="shelly-admin-maintenance.option.restartRequired"></option><option value="uptimeAboveSec" data-i18n="shelly-admin-maintenance.option.uptimeAbove"></option><option value="ramFreeBelowPct" data-i18n="shelly-admin-maintenance.option.ramBelow"></option><option value="firmwareAvailable" data-i18n="shelly-admin-maintenance.option.firmwareAvailable"></option></select></div>
+  <div class="form-row"><label for="node-input-conditionValue"><span data-i18n="shelly-admin-maintenance.label.conditionValue"></span></label><input type="number" id="node-input-conditionValue"></div>
+  <div class="form-row"><label for="node-input-failFast"><span data-i18n="shelly-admin-maintenance.label.failFast"></span></label><input type="checkbox" id="node-input-failFast" style="width:auto"></div>
+  <hr>
+  <div class="form-row"><label for="node-input-scheduleHours"><span data-i18n="shelly-admin-maintenance.label.scheduleHours"></span></label><input type="number" id="node-input-scheduleHours" min="0" step="0.25"></div>
+  <div class="form-row"><label for="node-input-scheduleMode"><span data-i18n="shelly-admin-maintenance.label.scheduleMode"></span></label><select id="node-input-scheduleMode"><option value="notify" data-i18n="shelly-admin-maintenance.option.notify"></option><option value="auto" data-i18n="shelly-admin-maintenance.option.auto"></option></select></div>
+  <div class="form-row"><label for="node-input-automaticUpdates"><span data-i18n="shelly-admin-maintenance.label.automaticUpdates"></span></label><input type="checkbox" id="node-input-automaticUpdates" style="width:auto"></div>
+  <div class="form-tips"><span data-i18n="shelly-admin-maintenance.tip.safety"></span></div>
+</script>
+<script type="text/html" data-help-name="shelly-admin-maintenance">
+  <p>Checks firmware or performs guarded, sequential firmware updates and reboots. Dry-run is the default. Non-dry-run actions triggered by input require <code>msg.confirm === true</code>.</p>
+  <p>Select exact IDs, IPs or MAC addresses in <code>msg.devices</code> or the editor. An empty selection never means “all” unless <code>allowAll</code> is explicitly true. Conditions support restart-required, uptime, free-memory and firmware-available checks.</p>
+  <p>Updates/reboots run one device at a time, wait for reachability and health data, then apply the configured stagger delay. Schedule mode <em>Notify</em> only checks. Automatic updates require the dedicated option and non-dry-run configuration.</p>
+  <p><strong>⚠️ Use at your own risk – no warranty.</strong> Firmware updates, reboots, relay actions and automatic shutdown can cause outages, data loss, equipment/building damage or costs. APIs and firmware may change. Use dry-run first, select a small pilot group, stagger the rollout, maintain power/network stability and supervise the process. Unofficial community project, not affiliated with Shelly or Allterco; provided “as is”.</p>
+</script>

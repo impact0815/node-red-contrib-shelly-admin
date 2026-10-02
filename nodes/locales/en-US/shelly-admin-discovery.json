@@ -1,0 +1,9 @@
+{
+  "shelly-admin-discovery": {
+    "label": { "default": "Shelly discovery", "palette": "Shelly discovery", "name": "Name", "admin": "Administration", "mode": "Scan mode", "scanOnStart": "Scan on start", "startDelaySeconds": "Start delay (s)" },
+    "option": { "incremental": "Incremental / validate", "full": "Full inventory scan" },
+    "output": { "inventory": "inventory", "events": "events", "errors": "errors" },
+    "status": { "scanning": "scanning", "ready": "{{count}} devices", "error": "scan error" },
+    "error": { "noConfig": "A valid Shelly administration configuration is required.", "busy": "A discovery scan is already running." }
+  }
+}

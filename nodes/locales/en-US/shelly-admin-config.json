@@ -1,0 +1,41 @@
+{
+  "shelly-admin-config": {
+    "label": {
+      "default": "Shelly administration",
+      "name": "Name",
+      "username": "Username",
+      "password": "Password",
+      "targets": "Manual targets",
+      "autoSubnets": "Detect local subnets",
+      "minimumAutoPrefix": "Minimum auto prefix",
+      "maxAddresses": "Address limit",
+      "timeoutMs": "HTTP timeout (ms)",
+      "discoveryConcurrency": "Discovery concurrency",
+      "monitorConcurrency": "Monitor concurrency",
+      "fullScanIntervalHours": "Full scan interval (h)",
+      "contextStore": "Context store name",
+      "rawRetentionHours": "Raw history (h)",
+      "aggregateRetentionDays": "Aggregates (days)",
+      "bucketMinutes": "Aggregate bucket (min)",
+      "anomalyMinSamples": "Baseline samples",
+      "anomalyWarmupSamples": "Warm-up samples",
+      "anomalyTriggerConsecutive": "Trigger observations",
+      "anomalyClearConsecutive": "Clear observations",
+      "anomalyCooldownMinutes": "Alert cooldown (min)",
+      "temperatureWarningC": "Temperature warning (°C)",
+      "temperatureCriticalC": "Temperature critical (°C)",
+      "temperatureHysteresisC": "Temperature hysteresis (°C)",
+      "temperatureConsecutive": "Temperature observations",
+      "temperatureCooldownMinutes": "Temperature cooldown (min)",
+      "policies": "Device policies (JSON)"
+    },
+    "placeholder": { "targets": "192.168.1.0/24\n192.168.10.20-40\n10.0.0.8" },
+    "tip": { "policySafety": "Automatic shutdown is disabled unless an exact device policy opts in. No automatic re-enable. This is not a certified fire-protection system." },
+    "status": {
+      "loading": "loading inventory",
+      "readyPersistent": "{{count}} devices · persistent",
+      "readyVolatile": "{{count}} devices · volatile",
+      "error": "configuration error"
+    }
+  }
+}

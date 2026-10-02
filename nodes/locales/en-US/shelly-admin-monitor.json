@@ -1,0 +1,10 @@
+{
+  "shelly-admin-monitor": {
+    "label": { "default": "Shelly monitor", "palette": "Shelly monitor", "name": "Name", "admin": "Administration", "periodic": "Periodic polling", "intervalSeconds": "Interval (s)", "automationMode": "Automation mode" },
+    "option": { "off": "Observe only", "notify": "Notify", "actions": "Explicit policy actions" },
+    "output": { "health": "health", "alerts": "alerts", "errors": "errors" },
+    "tip": { "actions": "Action mode still requires an exact per-device autoShutdown policy. It never re-enables outputs." },
+    "status": { "polling": "polling", "ready": "{{reachable}}/{{count}} reachable", "error": "monitor error" },
+    "error": { "noConfig": "A valid Shelly administration configuration is required.", "busy": "A monitoring cycle is already running." }
+  }
+}

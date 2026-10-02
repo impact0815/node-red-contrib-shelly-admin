@@ -1,0 +1,34 @@
+<script type="text/javascript">
+  RED.nodes.registerType("shelly-admin-monitor", {
+    category: "network",
+    color: "#E5A93D",
+    defaults: {
+      name: { value: "" },
+      admin: { value: "", type: "shelly-admin-config", required: true },
+      periodic: { value: true },
+      intervalSeconds: { value: 60, validate: RED.validators.number() },
+      automationMode: { value: "notify" }
+    },
+    inputs: 1,
+    outputs: 3,
+    icon: "font-awesome/fa-heartbeat",
+    outputLabels: function (index) { return this._(["shelly-admin-monitor.output.health", "shelly-admin-monitor.output.alerts", "shelly-admin-monitor.output.errors"][index]); },
+    label: function () { return this.name || this._("shelly-admin-monitor.label.default"); },
+    paletteLabel: function () { return this._("shelly-admin-monitor.label.palette"); }
+  });
+</script>
+<script type="text/html" data-template-name="shelly-admin-monitor">
+  <div class="form-row"><label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="shelly-admin-monitor.label.name"></span></label><input type="text" id="node-input-name"></div>
+  <div class="form-row"><label for="node-input-admin"><i class="fa fa-cog"></i> <span data-i18n="shelly-admin-monitor.label.admin"></span></label><input type="text" id="node-input-admin"></div>
+  <div class="form-row"><label for="node-input-periodic"><span data-i18n="shelly-admin-monitor.label.periodic"></span></label><input type="checkbox" id="node-input-periodic" style="width:auto"></div>
+  <div class="form-row"><label for="node-input-intervalSeconds"><span data-i18n="shelly-admin-monitor.label.intervalSeconds"></span></label><input type="number" id="node-input-intervalSeconds" min="10"></div>
+  <div class="form-row"><label for="node-input-automationMode"><span data-i18n="shelly-admin-monitor.label.automationMode"></span></label><select id="node-input-automationMode"><option value="off" data-i18n="shelly-admin-monitor.option.off"></option><option value="notify" data-i18n="shelly-admin-monitor.option.notify"></option><option value="actions" data-i18n="shelly-admin-monitor.option.actions"></option></select></div>
+  <div class="form-tips"><span data-i18n="shelly-admin-monitor.tip.actions"></span></div>
+</script>
+<script type="text/html" data-help-name="shelly-admin-monitor">
+  <p>Polls inventoried devices for reachability, response time, temperature, overtemperature, Wi-Fi RSSI, uptime, memory/filesystem, firmware state and available electrical values.</p>
+  <p>History is bounded and aggregated. Early-warning observations compare explicit current values with the device's own median/MAD baseline and, when enough comparable devices exist, peer medians. Every observation includes reasons, baseline, deviation, confidence and data quality. There is no opaque overall score and no guaranteed failure prediction.</p>
+  <p>Firmware/configuration changes start a warm-up period. Minimum samples, consecutive breaches, hysteresis, cooldown and missing-value handling reduce false alerts.</p>
+  <p><strong>Temperature safety:</strong> notifications are emitted first. An output can be switched off only in <em>Actions</em> mode and only when the exact device policy explicitly sets <code>autoShutdown:true</code>. No automatic re-enable occurs.</p>
+  <p><strong>⚠️ Use at your own risk – no warranty.</strong> This is not a certified fire-protection system and cannot replace smoke alarms, protective devices, supervision or professional electrical installation. Unofficial community project, not affiliated with Shelly or Allterco; provided “as is”.</p>
+</script>

@@ -1,0 +1,82 @@
+<script type="text/javascript">
+  RED.nodes.registerType("shelly-admin-config", {
+    category: "config",
+    defaults: {
+      name: { value: "" },
+      targets: { value: "" },
+      autoSubnets: { value: true },
+      minimumAutoPrefix: { value: 24, validate: RED.validators.number() },
+      maxAddresses: { value: 4096, validate: RED.validators.number() },
+      discoveryConcurrency: { value: 32, validate: RED.validators.number() },
+      monitorConcurrency: { value: 16, validate: RED.validators.number() },
+      timeoutMs: { value: 2500, validate: RED.validators.number() },
+      fullScanIntervalHours: { value: 168, validate: RED.validators.number() },
+      contextStore: { value: "file" },
+      rawRetentionHours: { value: 48, validate: RED.validators.number() },
+      aggregateRetentionDays: { value: 90, validate: RED.validators.number() },
+      bucketMinutes: { value: 60, validate: RED.validators.number() },
+      anomalyMinSamples: { value: 12, validate: RED.validators.number() },
+      anomalyWarmupSamples: { value: 6, validate: RED.validators.number() },
+      anomalyTriggerConsecutive: { value: 3, validate: RED.validators.number() },
+      anomalyClearConsecutive: { value: 2, validate: RED.validators.number() },
+      anomalyCooldownMinutes: { value: 60, validate: RED.validators.number() },
+      temperatureWarningC: { value: 70, validate: RED.validators.number() },
+      temperatureCriticalC: { value: 85, validate: RED.validators.number() },
+      temperatureHysteresisC: { value: 5, validate: RED.validators.number() },
+      temperatureConsecutive: { value: 3, validate: RED.validators.number() },
+      temperatureCooldownMinutes: { value: 15, validate: RED.validators.number() },
+      policies: { value: "[]" }
+    },
+    credentials: {
+      username: { type: "text" },
+      password: { type: "password" }
+    },
+    label: function () { return this.name || this._("shelly-admin-config.label.default"); }
+  });
+</script>
+
+<script type="text/html" data-template-name="shelly-admin-config">
+  <div class="form-row"><label for="node-config-input-name"><i class="fa fa-tag"></i> <span data-i18n="shelly-admin-config.label.name"></span></label><input type="text" id="node-config-input-name"></div>
+  <div class="form-row"><label for="node-config-input-username"><i class="fa fa-user"></i> <span data-i18n="shelly-admin-config.label.username"></span></label><input type="text" id="node-config-input-username" placeholder="admin"></div>
+  <div class="form-row"><label for="node-config-input-password"><i class="fa fa-lock"></i> <span data-i18n="shelly-admin-config.label.password"></span></label><input type="password" id="node-config-input-password"></div>
+  <hr>
+  <div class="form-row"><label for="node-config-input-targets"><i class="fa fa-sitemap"></i> <span data-i18n="shelly-admin-config.label.targets"></span></label><textarea id="node-config-input-targets" rows="4" style="width:70%" data-i18n="[placeholder]shelly-admin-config.placeholder.targets"></textarea></div>
+  <div class="form-row"><label for="node-config-input-autoSubnets"><span data-i18n="shelly-admin-config.label.autoSubnets"></span></label><input type="checkbox" id="node-config-input-autoSubnets" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-minimumAutoPrefix"><span data-i18n="shelly-admin-config.label.minimumAutoPrefix"></span></label><input type="number" id="node-config-input-minimumAutoPrefix" min="16" max="30"></div>
+  <div class="form-row"><label for="node-config-input-maxAddresses"><span data-i18n="shelly-admin-config.label.maxAddresses"></span></label><input type="number" id="node-config-input-maxAddresses" min="1"></div>
+  <div class="form-row"><label for="node-config-input-timeoutMs"><span data-i18n="shelly-admin-config.label.timeoutMs"></span></label><input type="number" id="node-config-input-timeoutMs" min="250"></div>
+  <div class="form-row"><label for="node-config-input-discoveryConcurrency"><span data-i18n="shelly-admin-config.label.discoveryConcurrency"></span></label><input type="number" id="node-config-input-discoveryConcurrency" min="1"></div>
+  <div class="form-row"><label for="node-config-input-monitorConcurrency"><span data-i18n="shelly-admin-config.label.monitorConcurrency"></span></label><input type="number" id="node-config-input-monitorConcurrency" min="1"></div>
+  <div class="form-row"><label for="node-config-input-fullScanIntervalHours"><span data-i18n="shelly-admin-config.label.fullScanIntervalHours"></span></label><input type="number" id="node-config-input-fullScanIntervalHours" min="1"></div>
+  <hr>
+  <div class="form-row"><label for="node-config-input-contextStore"><i class="fa fa-database"></i> <span data-i18n="shelly-admin-config.label.contextStore"></span></label><input type="text" id="node-config-input-contextStore" placeholder="file"></div>
+  <div class="form-row"><label for="node-config-input-rawRetentionHours"><span data-i18n="shelly-admin-config.label.rawRetentionHours"></span></label><input type="number" id="node-config-input-rawRetentionHours" min="1"></div>
+  <div class="form-row"><label for="node-config-input-aggregateRetentionDays"><span data-i18n="shelly-admin-config.label.aggregateRetentionDays"></span></label><input type="number" id="node-config-input-aggregateRetentionDays" min="1"></div>
+  <div class="form-row"><label for="node-config-input-bucketMinutes"><span data-i18n="shelly-admin-config.label.bucketMinutes"></span></label><input type="number" id="node-config-input-bucketMinutes" min="5"></div>
+  <hr>
+  <div class="form-row"><label for="node-config-input-anomalyMinSamples"><span data-i18n="shelly-admin-config.label.anomalyMinSamples"></span></label><input type="number" id="node-config-input-anomalyMinSamples" min="5"></div>
+  <div class="form-row"><label for="node-config-input-anomalyWarmupSamples"><span data-i18n="shelly-admin-config.label.anomalyWarmupSamples"></span></label><input type="number" id="node-config-input-anomalyWarmupSamples" min="1"></div>
+  <div class="form-row"><label for="node-config-input-anomalyTriggerConsecutive"><span data-i18n="shelly-admin-config.label.anomalyTriggerConsecutive"></span></label><input type="number" id="node-config-input-anomalyTriggerConsecutive" min="1"></div>
+  <div class="form-row"><label for="node-config-input-anomalyClearConsecutive"><span data-i18n="shelly-admin-config.label.anomalyClearConsecutive"></span></label><input type="number" id="node-config-input-anomalyClearConsecutive" min="1"></div>
+  <div class="form-row"><label for="node-config-input-anomalyCooldownMinutes"><span data-i18n="shelly-admin-config.label.anomalyCooldownMinutes"></span></label><input type="number" id="node-config-input-anomalyCooldownMinutes" min="1"></div>
+  <hr>
+  <div class="form-row"><label for="node-config-input-temperatureWarningC"><span data-i18n="shelly-admin-config.label.temperatureWarningC"></span></label><input type="number" id="node-config-input-temperatureWarningC"></div>
+  <div class="form-row"><label for="node-config-input-temperatureCriticalC"><span data-i18n="shelly-admin-config.label.temperatureCriticalC"></span></label><input type="number" id="node-config-input-temperatureCriticalC"></div>
+  <div class="form-row"><label for="node-config-input-temperatureHysteresisC"><span data-i18n="shelly-admin-config.label.temperatureHysteresisC"></span></label><input type="number" id="node-config-input-temperatureHysteresisC"></div>
+  <div class="form-row"><label for="node-config-input-temperatureConsecutive"><span data-i18n="shelly-admin-config.label.temperatureConsecutive"></span></label><input type="number" id="node-config-input-temperatureConsecutive"></div>
+  <div class="form-row"><label for="node-config-input-temperatureCooldownMinutes"><span data-i18n="shelly-admin-config.label.temperatureCooldownMinutes"></span></label><input type="number" id="node-config-input-temperatureCooldownMinutes"></div>
+  <div class="form-row"><label for="node-config-input-policies"><i class="fa fa-shield"></i> <span data-i18n="shelly-admin-config.label.policies"></span></label><textarea id="node-config-input-policies" rows="8" style="width:70%;font-family:monospace"></textarea></div>
+  <div class="form-tips"><span data-i18n="shelly-admin-config.tip.policySafety"></span></div>
+</script>
+
+<script type="text/html" data-help-name="shelly-admin-config">
+  <p>Shared configuration and runtime for discovery, inventory, history, health analysis and guarded device actions.</p>
+  <p><strong>⚠️ Use at your own risk – no warranty.</strong> This unofficial community project is not affiliated with Shelly or Allterco. It is provided “as is”. It is not a certified fire-protection system.</p>
+  <p>Targets accept CIDR networks, full or short IP ranges, individual addresses, and multiple comma/newline-separated entries. Automatic interface networks are limited by the configured minimum prefix and global address cap.</p>
+  <p>Set <code>contextStore</code> to the name of a Node-RED <code>localfilesystem</code> context store (commonly <code>file</code>). The node uses only the supported Context API. If the requested store is unavailable, it falls back to the default store and reports whether durability could be verified.</p>
+  <p>Policies are a JSON array. Automatic temperature shutdown is accepted only for an exact <code>id</code>, <code>ip</code>, or <code>mac</code> match and only when a monitor node is explicitly in action mode. Example:</p>
+  <pre>[
+  {"match":{"id":"shellyplus1pm-aabbcc"},"policy":{"temperature":{"warningC":70,"criticalC":85,"autoShutdown":false,"outputs":[0]}}}
+]</pre>
+  <p>Automatic re-enabling is never performed. Device, firmware and API behavior can change. Test with dry-run, stage rollouts, supervise risky actions, and use professionally installed electrical equipment.</p>
+</script>

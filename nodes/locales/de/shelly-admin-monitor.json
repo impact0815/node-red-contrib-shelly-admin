@@ -1,0 +1,10 @@
+{
+  "shelly-admin-monitor": {
+    "label": { "default": "Shelly-Überwachung", "palette": "Shelly-Überwachung", "name": "Name", "admin": "Verwaltung", "periodic": "Regelmäßig abfragen", "intervalSeconds": "Intervall (s)", "automationMode": "Automatikmodus" },
+    "option": { "off": "Nur beobachten", "notify": "Benachrichtigen", "actions": "Explizite Richtlinienaktionen" },
+    "output": { "health": "Gesundheitswerte", "alerts": "Hinweise", "errors": "Fehler" },
+    "tip": { "actions": "Der Aktionsmodus erfordert zusätzlich eine exakte autoShutdown-Richtlinie je Gerät. Ausgänge werden nie automatisch wiedereingeschaltet." },
+    "status": { "polling": "Abfrage läuft", "ready": "{{reachable}}/{{count}} erreichbar", "error": "Überwachungsfehler" },
+    "error": { "noConfig": "Eine gültige Shelly-Verwaltungskonfiguration ist erforderlich.", "busy": "Ein Überwachungszyklus läuft bereits." }
+  }
+}
