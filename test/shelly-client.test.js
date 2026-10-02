@@ -59,3 +59,35 @@ test("normalizes a Gen1 device and model code", async (t) => {
   assert.equal(device.health.powerW, 20);
   assert.equal(device.firmware.available.hasUpdate, true);
 });
+
+test("passes the configured timeout to a Gen2 firmware check", async () => {
+  let observedOptions;
+  const client = new ShellyClient({
+    request: async (_url, options) => {
+      observedOptions = options;
+      return { data: { stable: { version: "1.5.0" } } };
+    }
+  });
+  const result = await client.checkForUpdate({ id: "device", ip: "192.0.2.1", generation: 2 }, { timeoutMs: 4321 });
+  assert.equal(observedOptions.timeoutMs, 4321);
+  assert.equal(result.available.stable, "1.5.0");
+});
+
+test("passes 5000 ms unchanged to every Gen1 firmware-check request", async () => {
+  const requests = [];
+  const client = new ShellyClient({
+    request: async (url, options) => {
+      requests.push({ path: new URL(url).pathname, timeoutMs: options.timeoutMs });
+      return new URL(url).pathname === "/status"
+        ? { data: { update: { has_update: false, old_version: "1.0.0" } } }
+        : { data: { status: "ok" } };
+    }
+  });
+
+  await client.checkForUpdate({ id: "device", ip: "192.0.2.2", generation: 1 }, { timeoutMs: 5000 });
+
+  assert.deepEqual(requests, [
+    { path: "/ota/check", timeoutMs: 5000 },
+    { path: "/status", timeoutMs: 5000 }
+  ]);
+});

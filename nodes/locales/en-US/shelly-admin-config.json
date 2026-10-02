@@ -10,10 +10,11 @@
       "minimumAutoPrefix": "Minimum auto prefix",
       "maxAddresses": "Address limit",
       "timeoutMs": "HTTP timeout (ms)",
+      "firmwareCheckTimeoutMs": "Firmware Check Timeout (ms)",
       "discoveryConcurrency": "Discovery concurrency",
       "monitorConcurrency": "Monitor concurrency",
       "fullScanIntervalHours": "Full scan interval (h)",
-      "contextStore": "Context store name",
+      "contextStore": "Context store",
       "rawRetentionHours": "Raw history (h)",
       "aggregateRetentionDays": "Aggregates (days)",
       "bucketMinutes": "Aggregate bucket (min)",
@@ -27,15 +28,64 @@
       "temperatureHysteresisC": "Temperature hysteresis (°C)",
       "temperatureConsecutive": "Temperature observations",
       "temperatureCooldownMinutes": "Temperature cooldown (min)",
-      "policies": "Device policies (JSON)"
+      "policies": "Device policies (JSON)",
+      "firmwarePolicy": "Firmware policy",
+      "maintenanceDeviceTimeoutSeconds": "Update/reboot device timeout (s)",
+      "maintenanceRunTimeoutSeconds": "Maintenance run timeout (s)",
+      "maxRawSamplesPerDevice": "Maximum raw samples/device",
+      "maxBucketsPerDevice": "Maximum buckets/device",
+      "maxBytesPerDevice": "Maximum history bytes/device",
+      "anomalyProfile": "Anomaly profile",
+      "baselineWindowDays": "Baseline window (days)",
+      "peerMinDevices": "Peer group minimum",
+      "peerFirmwareMajor": "Match firmware major version",
+      "restartWindowHours": "Restart window (h)",
+      "restartThreshold": "Unexpected restart threshold",
+      "enableRecovery": "Recovery lifecycle",
+      "enableLatencyTrend": "Latency trend",
+      "enableTemperatureTrend": "Temperature trend",
+      "enableRestartPattern": "Restart pattern",
+      "enableResources": "Resource trends",
+      "enableElectrical": "Electrical observations",
+      "enablePeerComparison": "Peer comparison"
     },
-    "placeholder": { "targets": "192.168.1.0/24\n192.168.10.20-40\n10.0.0.8" },
-    "tip": { "policySafety": "Automatic shutdown is disabled unless an exact device policy opts in. No automatic re-enable. This is not a certified fire-protection system." },
+    "placeholder": {
+      "targets": "192.168.1.0/24\n192.168.10.20-40\n10.0.0.8"
+    },
+    "tip": {
+      "policySafety": "Automatic shutdown is disabled unless an exact device policy opts in. No automatic re-enable. This is not a certified fire-protection system."
+    },
+    "storage": {
+      "loading": "Loading Context stores…",
+      "default": "default",
+      "fileBased": "file-based",
+      "unavailableOption": "{{store}} (unavailable)",
+      "loadFailed": "The available Node-RED Context stores could not be loaded. The runtime will verify the selection safely.",
+      "unavailable": "Context store \"{{store}}\" is unavailable; the default store is being used ({{reason}}).",
+      "noFileStore": "No file-based Node-RED context store is available. Configure a localfilesystem store; until then data is stored through the default Context store and may be volatile.",
+      "selectedNotFile": "The selected Context store \"{{store}}\" is not file-based; data may be volatile.",
+      "selectedUnavailable": "The previously selected Context store \"{{store}}\" is unavailable; the runtime will use the default store.",
+      "memoryOnly": "The active Node-RED context store \"{{store}}\" is memory-only; inventory survives redeploys but not process restarts. Configure a localfilesystem store.",
+      "unverified": "The active Context store \"{{store}}\" could not be verified as file-based. Persistence uses only the supported Node-RED Context API.",
+      "stateMigrated": "Persisted state schema {{schema}} is migrated to schema 2."
+    },
     "status": {
       "loading": "loading inventory",
       "readyPersistent": "{{count}} devices · persistent",
       "readyVolatile": "{{count}} devices · volatile",
       "error": "configuration error"
+    },
+    "option": {
+      "stableOnly": "Stable only",
+      "allowBeta": "Allow beta"
+    },
+    "group": {
+      "identity": "Identity and credentials",
+      "discovery": "Discovery and firmware",
+      "history": "History and persistence",
+      "baseline": "Device baseline and peer analysis",
+      "categories": "Observation categories",
+      "temperatureSafety": "Static temperature safety and policies"
     }
   }
 }

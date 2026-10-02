@@ -4,7 +4,7 @@
     "type": "tab",
     "label": "Shelly admin - discovery and monitoring",
     "disabled": false,
-    "info": "Use at your own risk – no warranty. Configure authorized networks only."
+    "info": "Use at your own risk \u2013 no warranty. Configure authorized networks only."
   },
   {
     "id": "cfg-shelly-admin-01",
@@ -22,17 +22,37 @@
     "rawRetentionHours": 48,
     "aggregateRetentionDays": 90,
     "bucketMinutes": 60,
-    "anomalyMinSamples": 12,
-    "anomalyWarmupSamples": 6,
+    "anomalyMinSamples": 24,
+    "anomalyWarmupSamples": 12,
     "anomalyTriggerConsecutive": 3,
-    "anomalyClearConsecutive": 2,
-    "anomalyCooldownMinutes": 60,
+    "anomalyClearConsecutive": 3,
+    "anomalyCooldownMinutes": 120,
     "temperatureWarningC": 70,
     "temperatureCriticalC": 85,
     "temperatureHysteresisC": 5,
     "temperatureConsecutive": 3,
     "temperatureCooldownMinutes": 15,
-    "policies": "[]"
+    "policies": "[]",
+    "firmwarePolicy": "stable",
+    "maintenanceDeviceTimeoutSeconds": 15,
+    "maintenanceRunTimeoutSeconds": 900,
+    "firmwareCheckTimeoutMs": 2500,
+    "maxRawSamplesPerDevice": 10000,
+    "maxBucketsPerDevice": 10000,
+    "maxBytesPerDevice": 1048576,
+    "anomalyProfile": "Conservative",
+    "baselineWindowDays": 30,
+    "peerMinDevices": 3,
+    "peerFirmwareMajor": true,
+    "restartWindowHours": 24,
+    "restartThreshold": 3,
+    "enableRecovery": true,
+    "enableLatencyTrend": true,
+    "enableTemperatureTrend": true,
+    "enableRestartPattern": true,
+    "enableResources": true,
+    "enableElectrical": true,
+    "enablePeerComparison": true
   },
   {
     "id": "discover-01",
@@ -45,18 +65,38 @@
     "startDelaySeconds": 2,
     "x": 390,
     "y": 100,
-    "wires": [["debug-inventory-01"], ["debug-events-01"], ["debug-errors-01"]]
+    "wires": [
+      [
+        "debug-inventory-01"
+      ],
+      [
+        "debug-events-01"
+      ],
+      [
+        "debug-errors-01"
+      ]
+    ]
   },
   {
     "id": "inject-full-01",
     "type": "inject",
     "z": "tab-shelly-admin-01",
     "name": "Authorized full scan",
-    "props": [{ "p": "mode", "v": "full", "vt": "str" }],
+    "props": [
+      {
+        "p": "mode",
+        "v": "full",
+        "vt": "str"
+      }
+    ],
     "once": false,
     "x": 150,
     "y": 100,
-    "wires": [["discover-01"]]
+    "wires": [
+      [
+        "discover-01"
+      ]
+    ]
   },
   {
     "id": "monitor-01",
@@ -69,7 +109,19 @@
     "automationMode": "notify",
     "x": 180,
     "y": 220,
-    "wires": [["debug-health-01"], ["debug-alerts-01"], ["debug-errors-01"]]
+    "wires": [
+      [
+        "debug-health-01"
+      ],
+      [
+        "debug-alerts-01"
+      ],
+      [
+        "debug-errors-01"
+      ]
+    ],
+    "firmwarePolicy": "",
+    "outputMode": "current-and-transitions"
   },
   {
     "id": "debug-inventory-01",
@@ -131,7 +183,7 @@
     "type": "comment",
     "z": "tab-shelly-admin-01",
     "name": "Not a certified fire-protection system. No automatic actions in notify mode.",
-    "info": "Use at your own risk – no warranty. Unofficial community project, not affiliated with Shelly or Allterco.",
+    "info": "Use at your own risk \u2013 no warranty. Unofficial community project, not affiliated with Shelly or Allterco.",
     "x": 360,
     "y": 40,
     "wires": []

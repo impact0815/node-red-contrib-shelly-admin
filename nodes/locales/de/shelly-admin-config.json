@@ -10,10 +10,11 @@
       "minimumAutoPrefix": "Kleinste Auto-Präfixlänge",
       "maxAddresses": "Adresslimit",
       "timeoutMs": "HTTP-Zeitlimit (ms)",
+      "firmwareCheckTimeoutMs": "Firmwareprüfungs-Zeitlimit (ms)",
       "discoveryConcurrency": "Parallele Erkennung",
       "monitorConcurrency": "Parallele Überwachung",
       "fullScanIntervalHours": "Vollscan-Intervall (h)",
-      "contextStore": "Name des Context-Stores",
+      "contextStore": "Context-Store",
       "rawRetentionHours": "Rohhistorie (h)",
       "aggregateRetentionDays": "Aggregate (Tage)",
       "bucketMinutes": "Aggregationsintervall (min)",
@@ -27,15 +28,64 @@
       "temperatureHysteresisC": "Temperaturhysterese (°C)",
       "temperatureConsecutive": "Temperatur-Messwerte",
       "temperatureCooldownMinutes": "Temperatur-Cooldown (min)",
-      "policies": "Geräterichtlinien (JSON)"
+      "policies": "Geräterichtlinien (JSON)",
+      "firmwarePolicy": "Firmware-Richtlinie",
+      "maintenanceDeviceTimeoutSeconds": "Update-/Neustart-Zeitlimit je Gerät (s)",
+      "maintenanceRunTimeoutSeconds": "Wartungslauf-Zeitlimit (s)",
+      "maxRawSamplesPerDevice": "Maximale Rohwerte/Gerät",
+      "maxBucketsPerDevice": "Maximale Buckets/Gerät",
+      "maxBytesPerDevice": "Maximale Historienbytes/Gerät",
+      "anomalyProfile": "Anomalieprofil",
+      "baselineWindowDays": "Baseline-Fenster (Tage)",
+      "peerMinDevices": "Mindestgröße Peer-Gruppe",
+      "peerFirmwareMajor": "Firmware-Hauptversion abgleichen",
+      "restartWindowHours": "Neustartfenster (h)",
+      "restartThreshold": "Schwelle unerwarteter Neustarts",
+      "enableRecovery": "Recovery-Lebenszyklus",
+      "enableLatencyTrend": "Latenztrend",
+      "enableTemperatureTrend": "Temperaturtrend",
+      "enableRestartPattern": "Neustartmuster",
+      "enableResources": "Ressourcentrends",
+      "enableElectrical": "Elektrische Beobachtungen",
+      "enablePeerComparison": "Peer-Vergleich"
     },
-    "placeholder": { "targets": "192.168.1.0/24\n192.168.10.20-40\n10.0.0.8" },
-    "tip": { "policySafety": "Automatische Abschaltung ist nur nach expliziter Freigabe je Gerät aktiv. Kein automatisches Wiedereinschalten. Kein zertifiziertes Brandschutzsystem." },
+    "placeholder": {
+      "targets": "192.168.1.0/24\n192.168.10.20-40\n10.0.0.8"
+    },
+    "tip": {
+      "policySafety": "Automatische Abschaltung ist nur nach expliziter Freigabe je Gerät aktiv. Kein automatisches Wiedereinschalten. Kein zertifiziertes Brandschutzsystem."
+    },
+    "storage": {
+      "loading": "Context-Stores werden geladen…",
+      "default": "Standard",
+      "fileBased": "dateibasiert",
+      "unavailableOption": "{{store}} (nicht verfügbar)",
+      "loadFailed": "Die verfügbaren Node-RED-Context-Stores konnten nicht geladen werden. Die Laufzeit prüft die Auswahl sicher.",
+      "unavailable": "Der Context-Store \"{{store}}\" ist nicht verfügbar; stattdessen wird der Standard-Store verwendet ({{reason}}).",
+      "noFileStore": "Es ist kein dateibasierter Node-RED-Context-Store verfügbar. Konfigurieren Sie einen localfilesystem-Store; bis dahin werden Daten über den Standard-Context-Store gespeichert und können flüchtig sein.",
+      "selectedNotFile": "Der ausgewählte Context-Store \"{{store}}\" ist nicht dateibasiert; Daten können flüchtig sein.",
+      "selectedUnavailable": "Der zuvor ausgewählte Context-Store \"{{store}}\" ist nicht verfügbar; die Laufzeit verwendet den Standard-Store.",
+      "memoryOnly": "Der aktive Node-RED-Context-Store \"{{store}}\" speichert nur im Arbeitsspeicher; das Inventar übersteht Deployments, aber keine Prozessneustarts. Konfigurieren Sie einen localfilesystem-Store.",
+      "unverified": "Der aktive Context-Store \"{{store}}\" konnte nicht als dateibasiert verifiziert werden. Die Persistenz verwendet ausschließlich die unterstützte Node-RED-Context-API.",
+      "stateMigrated": "Das persistierte State-Schema {{schema}} wird auf Schema 2 migriert."
+    },
     "status": {
       "loading": "Inventar wird geladen",
       "readyPersistent": "{{count}} Geräte · persistent",
       "readyVolatile": "{{count}} Geräte · flüchtig",
       "error": "Konfigurationsfehler"
+    },
+    "option": {
+      "stableOnly": "Nur Stable",
+      "allowBeta": "Beta erlauben"
+    },
+    "group": {
+      "identity": "Identität und Zugangsdaten",
+      "discovery": "Erkennung und Firmware",
+      "history": "Historie und Persistenz",
+      "baseline": "Gerätebaseline und Peer-Analyse",
+      "categories": "Beobachtungskategorien",
+      "temperatureSafety": "Statische Temperatursicherheit und Richtlinien"
     }
   }
 }

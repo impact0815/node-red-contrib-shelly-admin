@@ -1,65 +1,235 @@
 <script type="text/javascript">
-  RED.nodes.registerType("shelly-admin-config", {
-    category: "config",
-    defaults: {
-      name: { value: "" },
-      targets: { value: "" },
-      autoSubnets: { value: true },
-      minimumAutoPrefix: { value: 24, validate: RED.validators.number() },
-      maxAddresses: { value: 4096, validate: RED.validators.number() },
-      discoveryConcurrency: { value: 32, validate: RED.validators.number() },
-      monitorConcurrency: { value: 16, validate: RED.validators.number() },
-      timeoutMs: { value: 2500, validate: RED.validators.number() },
-      fullScanIntervalHours: { value: 168, validate: RED.validators.number() },
-      contextStore: { value: "file" },
-      rawRetentionHours: { value: 48, validate: RED.validators.number() },
-      aggregateRetentionDays: { value: 90, validate: RED.validators.number() },
-      bucketMinutes: { value: 60, validate: RED.validators.number() },
-      anomalyMinSamples: { value: 12, validate: RED.validators.number() },
-      anomalyWarmupSamples: { value: 6, validate: RED.validators.number() },
-      anomalyTriggerConsecutive: { value: 3, validate: RED.validators.number() },
-      anomalyClearConsecutive: { value: 2, validate: RED.validators.number() },
-      anomalyCooldownMinutes: { value: 60, validate: RED.validators.number() },
-      temperatureWarningC: { value: 70, validate: RED.validators.number() },
-      temperatureCriticalC: { value: 85, validate: RED.validators.number() },
-      temperatureHysteresisC: { value: 5, validate: RED.validators.number() },
-      temperatureConsecutive: { value: 3, validate: RED.validators.number() },
-      temperatureCooldownMinutes: { value: 15, validate: RED.validators.number() },
-      policies: { value: "[]" }
-    },
-    credentials: {
-      username: { type: "text" },
-      password: { type: "password" }
-    },
-    label: function () { return this.name || this._("shelly-admin-config.label.default"); }
-  });
+  (function () {
+    function text(context, key, parameters, fallback) {
+      var translators = [];
+      if (context && typeof context._ === "function") translators.push(context._.bind(context));
+      if (typeof RED._ === "function") translators.push(RED._.bind(RED));
+      for (var index = 0; index < translators.length; index += 1) {
+        try {
+          var value = translators[index](key, parameters || {});
+          if (typeof value === "string" && value && value !== key) return interpolate(value, parameters);
+        } catch (_error) {
+          // The editor remains usable when its optional translation service is unavailable.
+        }
+      }
+      return interpolate(fallback || key, parameters);
+    }
+
+    function interpolate(value, parameters) {
+      return String(value).replace(/{{\s*([^}\s]+)\s*}}/g, function (_match, name) {
+        return Object.prototype.hasOwnProperty.call(parameters || {}, name) ? String(parameters[name]) : "";
+      });
+    }
+
+    var numericDefaults = {
+      minimumAutoPrefix: 24,
+      maxAddresses: 4096,
+      discoveryConcurrency: 32,
+      monitorConcurrency: 16,
+      timeoutMs: 2500,
+      firmwareCheckTimeoutMs: 2500,
+      maintenanceDeviceTimeoutSeconds: 15,
+      maintenanceRunTimeoutSeconds: 900,
+      fullScanIntervalHours: 168,
+      rawRetentionHours: 48,
+      aggregateRetentionDays: 90,
+      bucketMinutes: 60,
+      maxRawSamplesPerDevice: 10000,
+      maxBucketsPerDevice: 10000,
+      maxBytesPerDevice: 1048576,
+      baselineWindowDays: 30,
+      anomalyMinSamples: 24,
+      anomalyWarmupSamples: 12,
+      anomalyTriggerConsecutive: 3,
+      anomalyClearConsecutive: 3,
+      anomalyCooldownMinutes: 120,
+      peerMinDevices: 3,
+      restartWindowHours: 24,
+      restartThreshold: 3,
+      temperatureWarningC: 70,
+      temperatureCriticalC: 85,
+      temperatureHysteresisC: 5,
+      temperatureConsecutive: 3,
+      temperatureCooldownMinutes: 15
+    };
+
+    function applyNumericDefaults(node, persist) {
+      Object.keys(numericDefaults).forEach(function (name) {
+        var input = $("#node-config-input-" + name);
+        var value = node[name];
+        if (value === undefined || value === null || String(value).trim() === "") value = numericDefaults[name];
+        input.val(value);
+        if (persist) node[name] = Number(input.val());
+      });
+    }
+
+    var profileDefaults = {
+      Conservative: { anomalyMinSamples: 24, anomalyWarmupSamples: 12, anomalyTriggerConsecutive: 3, anomalyClearConsecutive: 3, anomalyCooldownMinutes: 120 },
+      Balanced: { anomalyMinSamples: 16, anomalyWarmupSamples: 8, anomalyTriggerConsecutive: 3, anomalyClearConsecutive: 2, anomalyCooldownMinutes: 60 },
+      Sensitive: { anomalyMinSamples: 10, anomalyWarmupSamples: 5, anomalyTriggerConsecutive: 2, anomalyClearConsecutive: 2, anomalyCooldownMinutes: 30 }
+    };
+
+    RED.nodes.registerType("shelly-admin-config", {
+      category: "config",
+      defaults: {
+        name: { value: "" },
+        targets: { value: "" },
+        autoSubnets: { value: true },
+        minimumAutoPrefix: { value: 24, validate: RED.validators.number() },
+        maxAddresses: { value: 4096, validate: RED.validators.number() },
+        discoveryConcurrency: { value: 32, validate: RED.validators.number() },
+        monitorConcurrency: { value: 16, validate: RED.validators.number() },
+        timeoutMs: { value: 2500, validate: RED.validators.number() },
+        firmwareCheckTimeoutMs: { value: 2500, validate: RED.validators.number() },
+        firmwarePolicy: { value: "stable" },
+        maintenanceDeviceTimeoutSeconds: { value: 15, validate: RED.validators.number() },
+        maintenanceRunTimeoutSeconds: { value: 900, validate: RED.validators.number() },
+        fullScanIntervalHours: { value: 168, validate: RED.validators.number() },
+        contextStore: { value: "" },
+        rawRetentionHours: { value: 48, validate: RED.validators.number() },
+        aggregateRetentionDays: { value: 90, validate: RED.validators.number() },
+        bucketMinutes: { value: 60, validate: RED.validators.number() },
+        maxRawSamplesPerDevice: { value: 10000, validate: RED.validators.number() },
+        maxBucketsPerDevice: { value: 10000, validate: RED.validators.number() },
+        maxBytesPerDevice: { value: 1048576, validate: RED.validators.number() },
+        anomalyProfile: { value: "Conservative" },
+        baselineWindowDays: { value: 30, validate: RED.validators.number() },
+        anomalyMinSamples: { value: 24, validate: RED.validators.number() },
+        anomalyWarmupSamples: { value: 12, validate: RED.validators.number() },
+        anomalyTriggerConsecutive: { value: 3, validate: RED.validators.number() },
+        anomalyClearConsecutive: { value: 3, validate: RED.validators.number() },
+        anomalyCooldownMinutes: { value: 120, validate: RED.validators.number() },
+        peerMinDevices: { value: 3, validate: RED.validators.number() },
+        peerFirmwareMajor: { value: true },
+        restartWindowHours: { value: 24, validate: RED.validators.number() },
+        restartThreshold: { value: 3, validate: RED.validators.number() },
+        enableRecovery: { value: true },
+        enableLatencyTrend: { value: true },
+        enableTemperatureTrend: { value: true },
+        enableRestartPattern: { value: true },
+        enableResources: { value: true },
+        enableElectrical: { value: true },
+        enablePeerComparison: { value: true },
+        temperatureWarningC: { value: 70, validate: RED.validators.number() },
+        temperatureCriticalC: { value: 85, validate: RED.validators.number() },
+        temperatureHysteresisC: { value: 5, validate: RED.validators.number() },
+        temperatureConsecutive: { value: 3, validate: RED.validators.number() },
+        temperatureCooldownMinutes: { value: 15, validate: RED.validators.number() },
+        policies: { value: "[]" }
+      },
+      credentials: {
+        username: { type: "text" },
+        password: { type: "password" }
+      },
+      label: function () { return this.name || text(this, "shelly-admin-config.label.default", {}, "Shelly administration"); },
+      oneditprepare: function () {
+        var node = this;
+        applyNumericDefaults(node, false);
+        var select = $("#node-config-input-contextStore");
+        var warning = $("#node-config-contextStore-warning");
+        var selectedValue = typeof node.contextStore === "string" ? node.contextStore : "";
+        var stores = [];
+        $("#node-config-input-anomalyProfile").off("change.shellyAdminProfile").on("change.shellyAdminProfile", function () {
+          var values = profileDefaults[$(this).val()];
+          if (!values) return;
+          Object.keys(values).forEach(function (name) { $("#node-config-input-" + name).val(values[name]); });
+        });
+
+        function showWarning(message) {
+          warning.text(message || "").toggle(Boolean(message));
+        }
+
+        function updateWarning(hasFileStore) {
+          if (!hasFileStore) {
+            showWarning(text(node, "shelly-admin-config.storage.noFileStore", {}, "No file-based Node-RED context store is available. Configure a localfilesystem store; until then data may be volatile."));
+            return;
+          }
+          var selected = stores.find(function (store) { return store.value === select.val(); });
+          if (!selected) {
+            showWarning(text(node, "shelly-admin-config.storage.selectedUnavailable", { store: select.val() || "default" }, "The previously selected Context store is unavailable; the runtime will use the default store."));
+          } else if (!selected.durable) {
+            showWarning(text(node, "shelly-admin-config.storage.selectedNotFile", { store: selected.name }, "The selected Context store is not file-based; data may be volatile."));
+          } else {
+            showWarning("");
+          }
+        }
+
+        select.empty().append($("<option>").val(selectedValue).text(text(node, "shelly-admin-config.storage.loading", {}, "Loading Context stores…")));
+        $.getJSON("shelly-admin/context-stores").done(function (response) {
+          stores = Array.isArray(response.stores) ? response.stores : [];
+          select.empty();
+          stores.forEach(function (store) {
+            var label = store.name + " (" + store.module + ")";
+            if (store.isDefault) label += " — " + text(node, "shelly-admin-config.storage.default", {}, "default");
+            if (store.durable) label += " — " + text(node, "shelly-admin-config.storage.fileBased", {}, "file-based");
+            select.append($("<option>").val(store.value).text(label));
+          });
+          if (!stores.some(function (store) { return store.value === selectedValue; })) {
+            select.append($("<option>").val(selectedValue).text(text(node, "shelly-admin-config.storage.unavailableOption", { store: selectedValue || "default" }, (selectedValue || "default") + " (unavailable)")));
+          }
+          select.val(selectedValue);
+          updateWarning(response.hasFileStore === true);
+          select.off("change.shellyAdmin").on("change.shellyAdmin", function () { updateWarning(response.hasFileStore === true); });
+        }).fail(function () {
+          select.empty().append($("<option>").val(selectedValue).text(selectedValue || "default"));
+          showWarning(text(node, "shelly-admin-config.storage.loadFailed", {}, "The available Node-RED Context stores could not be loaded. The runtime will verify the selection safely."));
+        });
+      },
+      oneditsave: function () {
+        applyNumericDefaults(this, true);
+      }
+    });
+  }());
 </script>
 
 <script type="text/html" data-template-name="shelly-admin-config">
+  <h3 data-i18n="shelly-admin-config.group.identity"></h3>
   <div class="form-row"><label for="node-config-input-name"><i class="fa fa-tag"></i> <span data-i18n="shelly-admin-config.label.name"></span></label><input type="text" id="node-config-input-name"></div>
   <div class="form-row"><label for="node-config-input-username"><i class="fa fa-user"></i> <span data-i18n="shelly-admin-config.label.username"></span></label><input type="text" id="node-config-input-username" placeholder="admin"></div>
   <div class="form-row"><label for="node-config-input-password"><i class="fa fa-lock"></i> <span data-i18n="shelly-admin-config.label.password"></span></label><input type="password" id="node-config-input-password"></div>
-  <hr>
+  <h3 data-i18n="shelly-admin-config.group.discovery"></h3>
   <div class="form-row"><label for="node-config-input-targets"><i class="fa fa-sitemap"></i> <span data-i18n="shelly-admin-config.label.targets"></span></label><textarea id="node-config-input-targets" rows="4" style="width:70%" data-i18n="[placeholder]shelly-admin-config.placeholder.targets"></textarea></div>
   <div class="form-row"><label for="node-config-input-autoSubnets"><span data-i18n="shelly-admin-config.label.autoSubnets"></span></label><input type="checkbox" id="node-config-input-autoSubnets" style="width:auto"></div>
   <div class="form-row"><label for="node-config-input-minimumAutoPrefix"><span data-i18n="shelly-admin-config.label.minimumAutoPrefix"></span></label><input type="number" id="node-config-input-minimumAutoPrefix" min="16" max="30"></div>
   <div class="form-row"><label for="node-config-input-maxAddresses"><span data-i18n="shelly-admin-config.label.maxAddresses"></span></label><input type="number" id="node-config-input-maxAddresses" min="1"></div>
   <div class="form-row"><label for="node-config-input-timeoutMs"><span data-i18n="shelly-admin-config.label.timeoutMs"></span></label><input type="number" id="node-config-input-timeoutMs" min="250"></div>
+  <div class="form-row"><label for="node-config-input-firmwareCheckTimeoutMs"><span data-i18n="shelly-admin-config.label.firmwareCheckTimeoutMs"></span></label><input type="number" id="node-config-input-firmwareCheckTimeoutMs" min="250" max="60000" step="250"></div>
+  <div class="form-row"><label for="node-config-input-firmwarePolicy"><span data-i18n="shelly-admin-config.label.firmwarePolicy"></span></label><select id="node-config-input-firmwarePolicy"><option value="stable" data-i18n="shelly-admin-config.option.stableOnly"></option><option value="allow-beta" data-i18n="shelly-admin-config.option.allowBeta"></option></select></div>
+  <div class="form-row"><label for="node-config-input-maintenanceDeviceTimeoutSeconds"><span data-i18n="shelly-admin-config.label.maintenanceDeviceTimeoutSeconds"></span></label><input type="number" id="node-config-input-maintenanceDeviceTimeoutSeconds" min="1"></div>
+  <div class="form-row"><label for="node-config-input-maintenanceRunTimeoutSeconds"><span data-i18n="shelly-admin-config.label.maintenanceRunTimeoutSeconds"></span></label><input type="number" id="node-config-input-maintenanceRunTimeoutSeconds" min="1"></div>
   <div class="form-row"><label for="node-config-input-discoveryConcurrency"><span data-i18n="shelly-admin-config.label.discoveryConcurrency"></span></label><input type="number" id="node-config-input-discoveryConcurrency" min="1"></div>
   <div class="form-row"><label for="node-config-input-monitorConcurrency"><span data-i18n="shelly-admin-config.label.monitorConcurrency"></span></label><input type="number" id="node-config-input-monitorConcurrency" min="1"></div>
   <div class="form-row"><label for="node-config-input-fullScanIntervalHours"><span data-i18n="shelly-admin-config.label.fullScanIntervalHours"></span></label><input type="number" id="node-config-input-fullScanIntervalHours" min="1"></div>
-  <hr>
-  <div class="form-row"><label for="node-config-input-contextStore"><i class="fa fa-database"></i> <span data-i18n="shelly-admin-config.label.contextStore"></span></label><input type="text" id="node-config-input-contextStore" placeholder="file"></div>
+  <h3 data-i18n="shelly-admin-config.group.history"></h3>
+  <div class="form-row"><label for="node-config-input-contextStore"><i class="fa fa-database"></i> <span data-i18n="shelly-admin-config.label.contextStore"></span></label><select id="node-config-input-contextStore" style="width:70%"></select></div>
+  <div class="form-tips" id="node-config-contextStore-warning" style="display:none;color:#a94442"></div>
   <div class="form-row"><label for="node-config-input-rawRetentionHours"><span data-i18n="shelly-admin-config.label.rawRetentionHours"></span></label><input type="number" id="node-config-input-rawRetentionHours" min="1"></div>
   <div class="form-row"><label for="node-config-input-aggregateRetentionDays"><span data-i18n="shelly-admin-config.label.aggregateRetentionDays"></span></label><input type="number" id="node-config-input-aggregateRetentionDays" min="1"></div>
   <div class="form-row"><label for="node-config-input-bucketMinutes"><span data-i18n="shelly-admin-config.label.bucketMinutes"></span></label><input type="number" id="node-config-input-bucketMinutes" min="5"></div>
-  <hr>
+  <div class="form-row"><label for="node-config-input-maxRawSamplesPerDevice"><span data-i18n="shelly-admin-config.label.maxRawSamplesPerDevice"></span></label><input type="number" id="node-config-input-maxRawSamplesPerDevice" min="100"></div>
+  <div class="form-row"><label for="node-config-input-maxBucketsPerDevice"><span data-i18n="shelly-admin-config.label.maxBucketsPerDevice"></span></label><input type="number" id="node-config-input-maxBucketsPerDevice" min="24"></div>
+  <div class="form-row"><label for="node-config-input-maxBytesPerDevice"><span data-i18n="shelly-admin-config.label.maxBytesPerDevice"></span></label><input type="number" id="node-config-input-maxBytesPerDevice" min="16384"></div>
+  <h3 data-i18n="shelly-admin-config.group.baseline"></h3>
+  <div class="form-row"><label for="node-config-input-anomalyProfile"><span data-i18n="shelly-admin-config.label.anomalyProfile"></span></label><select id="node-config-input-anomalyProfile"><option value="Conservative">Conservative</option><option value="Balanced">Balanced</option><option value="Sensitive">Sensitive</option><option value="Custom">Custom</option></select></div>
+  <div class="form-row"><label for="node-config-input-baselineWindowDays"><span data-i18n="shelly-admin-config.label.baselineWindowDays"></span></label><input type="number" id="node-config-input-baselineWindowDays" min="1"></div>
   <div class="form-row"><label for="node-config-input-anomalyMinSamples"><span data-i18n="shelly-admin-config.label.anomalyMinSamples"></span></label><input type="number" id="node-config-input-anomalyMinSamples" min="5"></div>
   <div class="form-row"><label for="node-config-input-anomalyWarmupSamples"><span data-i18n="shelly-admin-config.label.anomalyWarmupSamples"></span></label><input type="number" id="node-config-input-anomalyWarmupSamples" min="1"></div>
   <div class="form-row"><label for="node-config-input-anomalyTriggerConsecutive"><span data-i18n="shelly-admin-config.label.anomalyTriggerConsecutive"></span></label><input type="number" id="node-config-input-anomalyTriggerConsecutive" min="1"></div>
   <div class="form-row"><label for="node-config-input-anomalyClearConsecutive"><span data-i18n="shelly-admin-config.label.anomalyClearConsecutive"></span></label><input type="number" id="node-config-input-anomalyClearConsecutive" min="1"></div>
   <div class="form-row"><label for="node-config-input-anomalyCooldownMinutes"><span data-i18n="shelly-admin-config.label.anomalyCooldownMinutes"></span></label><input type="number" id="node-config-input-anomalyCooldownMinutes" min="1"></div>
-  <hr>
+  <div class="form-row"><label for="node-config-input-peerMinDevices"><span data-i18n="shelly-admin-config.label.peerMinDevices"></span></label><input type="number" id="node-config-input-peerMinDevices" min="3"></div>
+  <div class="form-row"><label for="node-config-input-peerFirmwareMajor"><span data-i18n="shelly-admin-config.label.peerFirmwareMajor"></span></label><input type="checkbox" id="node-config-input-peerFirmwareMajor" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-restartWindowHours"><span data-i18n="shelly-admin-config.label.restartWindowHours"></span></label><input type="number" id="node-config-input-restartWindowHours" min="1"></div>
+  <div class="form-row"><label for="node-config-input-restartThreshold"><span data-i18n="shelly-admin-config.label.restartThreshold"></span></label><input type="number" id="node-config-input-restartThreshold" min="2"></div>
+  <h3 data-i18n="shelly-admin-config.group.categories"></h3>
+  <div class="form-row"><label for="node-config-input-enableRecovery"><span data-i18n="shelly-admin-config.label.enableRecovery"></span></label><input type="checkbox" id="node-config-input-enableRecovery" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-enableLatencyTrend"><span data-i18n="shelly-admin-config.label.enableLatencyTrend"></span></label><input type="checkbox" id="node-config-input-enableLatencyTrend" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-enableTemperatureTrend"><span data-i18n="shelly-admin-config.label.enableTemperatureTrend"></span></label><input type="checkbox" id="node-config-input-enableTemperatureTrend" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-enableRestartPattern"><span data-i18n="shelly-admin-config.label.enableRestartPattern"></span></label><input type="checkbox" id="node-config-input-enableRestartPattern" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-enableResources"><span data-i18n="shelly-admin-config.label.enableResources"></span></label><input type="checkbox" id="node-config-input-enableResources" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-enableElectrical"><span data-i18n="shelly-admin-config.label.enableElectrical"></span></label><input type="checkbox" id="node-config-input-enableElectrical" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-enablePeerComparison"><span data-i18n="shelly-admin-config.label.enablePeerComparison"></span></label><input type="checkbox" id="node-config-input-enablePeerComparison" style="width:auto"></div>
+  <h3 data-i18n="shelly-admin-config.group.temperatureSafety"></h3>
   <div class="form-row"><label for="node-config-input-temperatureWarningC"><span data-i18n="shelly-admin-config.label.temperatureWarningC"></span></label><input type="number" id="node-config-input-temperatureWarningC"></div>
   <div class="form-row"><label for="node-config-input-temperatureCriticalC"><span data-i18n="shelly-admin-config.label.temperatureCriticalC"></span></label><input type="number" id="node-config-input-temperatureCriticalC"></div>
   <div class="form-row"><label for="node-config-input-temperatureHysteresisC"><span data-i18n="shelly-admin-config.label.temperatureHysteresisC"></span></label><input type="number" id="node-config-input-temperatureHysteresisC"></div>
@@ -70,10 +240,14 @@
 </script>
 
 <script type="text/html" data-help-name="shelly-admin-config">
-  <p>Shared configuration and runtime for discovery, inventory, history, health analysis and guarded device actions.</p>
+  <p>Shared configuration and runtime for discovery, inventory, schema-2 persistence, bounded history, device baselines, peer comparison and guarded actions.</p>
   <p><strong>⚠️ Use at your own risk – no warranty.</strong> This unofficial community project is not affiliated with Shelly or Allterco. It is provided “as is”. It is not a certified fire-protection system.</p>
   <p>Targets accept CIDR networks, full or short IP ranges, individual addresses, and multiple comma/newline-separated entries. Automatic interface networks are limited by the configured minimum prefix and global address cap.</p>
-  <p>Set <code>contextStore</code> to the name of a Node-RED <code>localfilesystem</code> context store (commonly <code>file</code>). The node uses only the supported Context API. If the requested store is unavailable, it falls back to the default store and reports whether durability could be verified.</p>
+  <p>The storage dropdown lists the Context stores currently exposed by Node-RED. Select a <code>localfilesystem</code> store (commonly named <code>file</code>) for durable state. If none is available, the editor and runtime warn clearly and the node uses the default store through the supported Context API. No private Node-RED files are accessed directly.</p>
+  <p>The firmware policy defaults to <em>Stable only</em>; <em>Allow beta</em> is explicit. <em>Firmware Check Timeout (ms)</em> defaults to 2500 ms and is limited to 250–60000 ms. Missing or empty legacy numeric fields are visibly defaulted and saved as concrete numbers.</p>
+  <p>History stores available raw values plus compact buckets with retention, count and byte limits. Conservative is the default anomaly profile; firmware/configuration changes start warm-up. Peer comparison requires at least three closely matching devices by default.</p>
+  <p>State schema 2 migrates 0.1.x inventory, history, errors and analysis sections independently. A damaged optional section is isolated instead of discarding a valid inventory.</p>
+  <p>Temperature defaults are 70 °C warning, 85 °C critical, 5 °C hysteresis, three consecutive observations and a 15-minute cooldown. These thresholds are separate from the device overtemperature flag.</p>
   <p>Policies are a JSON array. Automatic temperature shutdown is accepted only for an exact <code>id</code>, <code>ip</code>, or <code>mac</code> match and only when a monitor node is explicitly in action mode. Example:</p>
   <pre>[
   {"match":{"id":"shellyplus1pm-aabbcc"},"policy":{"temperature":{"warningC":70,"criticalC":85,"autoShutdown":false,"outputs":[0]}}}

@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { ContextPersistence } = require("../lib/persistence");
+const { ContextPersistence, listContextStores } = require("../lib/persistence");
 
 function fakeNode(failingStore) {
   const stores = new Map();
@@ -44,4 +44,35 @@ test("falls back to default and reports memory-only behavior", async () => {
   assert.equal(info.fallback, true);
   assert.equal(info.durable, false);
   assert.match(info.warning, /unavailable/);
+  assert.deepEqual(info.warnings.map((warning) => warning.code), ["unavailable", "noFileStore"]);
+});
+
+test("lists the actual configured stores and resolves the default alias", () => {
+  const RED = {
+    settings: {
+      contextStorage: {
+        default: "memoryOnly",
+        memoryOnly: { module: "memory" },
+        file: { module: "localfilesystem", config: { flushInterval: 30 } },
+        remote: { module: "custom-context-store" }
+      }
+    }
+  };
+  assert.deepEqual(listContextStores(RED), [
+    { name: "default", value: "", module: "memory", mode: "memory", durable: false, isDefault: true, target: "memoryOnly" },
+    { name: "memoryOnly", value: "memoryOnly", module: "memory", mode: "memory", durable: false, isDefault: true },
+    { name: "file", value: "file", module: "localfilesystem", mode: "file", durable: true, isDefault: false },
+    { name: "remote", value: "remote", module: "custom-context-store", mode: "custom", durable: false, isDefault: false }
+  ]);
+});
+
+test("reports a clear warning when Node-RED has no file-based store", async () => {
+  const RED = { settings: { contextStorage: { default: { module: "memory" } } } };
+  const persistence = new ContextPersistence(RED, fakeNode(), { store: "" });
+  const info = await persistence.initialize();
+  assert.equal(info.activeStore, "default");
+  assert.equal(info.mode, "memory");
+  assert.equal(info.durable, false);
+  assert.equal(info.warnings[0].code, "noFileStore");
+  assert.match(info.warning, /No file-based Node-RED context store/);
 });

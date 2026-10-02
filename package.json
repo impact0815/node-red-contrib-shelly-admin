@@ -1,7 +1,7 @@
 {
   "name": "@impact0815/node-red-contrib-shelly-admin",
-  "version": "0.1.0",
-  "description": "Local discovery, inventory, health monitoring, anomaly hints, and safeguarded maintenance for Shelly Gen1 and Gen2+ devices in Node-RED.",
+  "version": "0.2.0",
+  "description": "Local Shelly Gen1-Gen4 discovery, durable history, device baselines, lifecycle observations, firmware policy, and safeguarded Node-RED maintenance.",
   "keywords": [
     "node-red",
     "shelly",
@@ -39,6 +39,10 @@
     "SECURITY.md",
     "NOTICE.md",
     "BUILD-INFO.md",
+    "RELEASE.md",
+    "RELEASE-NOTES-0.1.4.md",
+    "RELEASE-NOTES-0.1.4.1.md",
+    "RELEASE-NOTES-0.2.0.md",
     "LICENSE"
   ],
   "scripts": {
@@ -46,6 +50,7 @@
     "test:coverage": "node --test --experimental-test-coverage test/*.test.js",
     "lint": "node tools/lint.js",
     "check": "npm run lint && npm test && npm pack --dry-run",
+    "release:build": "npm run check && node tools/build-release.js",
     "prepublishOnly": "npm run check"
   },
   "devDependencies": {},

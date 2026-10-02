@@ -2,133 +2,170 @@
 
 **English** · [Deutsch](README.de.md)
 
-Node-RED nodes for local Shelly fleet administration: network discovery, persistent inventory, health monitoring, bounded history, transparent anomaly hints, firmware checks, guarded rolling updates, and conditional reboots. Gen1 and Gen2+ are supported without a built-in MQTT dependency.
+Node-RED nodes for local Shelly fleet administration: discovery, persistent inventory, firmware policy, guarded maintenance, historical monitoring, device baselines, cautious peer comparison, and explicit observation lifecycles. Shelly generations 1–4 are supported through the Gen1 and Gen2+ HTTP API families. MQTT is optional and is not a package dependency.
 
-## Disclaimer and safety
+## Safety and scope
 
-> **⚠️ Use at your own risk – no warranty.**
+> **⚠️ Use at your own risk – no warranty.** This is an unofficial community project and is not affiliated with, endorsed by, or supported by Shelly or Allterco. It is supplied “as is”.
 >
-> This is an **unofficial community project** and is not affiliated with, endorsed by, or supported by Shelly or Allterco. It is provided **“as is”**, without warranty of any kind. To the maximum extent permitted by the MIT License and applicable law, the authors and contributors accept no liability for device, electrical, building, data, consequential or other damage, outages, loss, costs, or claims arising from its use.
+> Trend and anomaly observations are **not guaranteed failure predictions**. They do not replace manufacturer protections, smoke alarms, professional electrical installation, inspection, fire protection, or supervised maintenance.
 >
-> Shelly APIs, device behavior and firmware may change. Firmware updates, reboots, relay actions and automatic shutdown can interrupt services or leave equipment in an unsafe or unexpected state. Start with **dry-run**, use a small pilot group, perform a **staggered rollout**, keep stable power/network connectivity, supervise risky actions, maintain backups, and use professionally installed electrical equipment.
->
-> Temperature monitoring and reactions are operational aids only. **This software is not a certified fire-protection or life-safety system** and does not replace smoke detectors, protective devices, inspections, supervision, or professional electrical installation.
+> Automatic temperature shutdown is disabled unless both the monitor is in **Explicit policy actions** mode and an exact device policy explicitly allows it. The package never automatically re-enables an output.
 
-This notice explains operational risk; it does not add restrictions that conflict with the [MIT License](LICENSE).
+## Nodes and compatibility
 
-## Nodes
-
-| Node | Purpose | Outputs |
+| Node type | Purpose | Existing outputs retained |
 |---|---|---|
-| `shelly-admin-config` | Shared credentials, targets, inventory, policies, persistence, history and analysis runtime | Configuration node |
-| `shelly-admin-discovery` | Full or incremental discovery and inventory validation | Inventory · events · errors |
-| `shelly-admin-monitor` | Health polling, history, anomaly hints and temperature policy handling | Health · alerts · errors |
-| `shelly-admin-maintenance` | Firmware checks, dry-runs, rolling updates and conditional reboots | Result · per-device results · errors |
+| `shelly-admin-config` | Shared credentials, discovery, persistence, history, analysis and safety settings | Configuration node |
+| `shelly-admin-discovery` | Full/incremental discovery and inventory validation | Inventory · events · errors |
+| `shelly-admin-monitor` | Polling, history, observations and temperature safety | Health · alerts · errors |
+| `shelly-admin-maintenance` | Firmware checks, dry-runs, rolling updates and conditional reboots | Result · per-device progress · errors |
 
-All outputs are JSON objects with a versioned `schema`, ISO timestamp and explicit device references. The package does not require MQTT; connect the structured messages to MQTT, databases, dashboards or notification nodes if desired.
+Version 0.2.0 keeps the existing node type names, three-output wiring, Node.js 18+/Node-RED 3.1+ support, Gen1–Gen4 normalization, Context-store persistence, Stable-only default firmware policy, optional beta policy, structured errors, and temperature safety behavior.
 
-## Requirements and installation
-
-- Node.js 18 or newer
-- Node-RED 3.1 or newer
-- Network permission to query the configured devices
+## Install
 
 From the Node-RED user directory:
 
 ```bash
 cd ~/.node-red
-npm install @impact0815/node-red-contrib-shelly-admin
+npm install @impact0815/node-red-contrib-shelly-admin@0.2.0
 ```
 
-For a local archive:
+From the supplied package:
 
 ```bash
-npm install ./impact0815-node-red-contrib-shelly-admin-0.1.0.tgz
-# or unzip the project and install its directory
+cd ~/.node-red
+npm install /path/to/impact0815-node-red-contrib-shelly-admin-0.2.0.tgz
 ```
 
-Restart Node-RED, then add one configuration node plus the discovery/monitor/maintenance nodes you need.
+Restart Node-RED and add one `shelly-admin-config` node plus the required discovery, monitor, and maintenance nodes.
 
-## Discovery and identification
+## Discovery and firmware policy
 
-Targets may contain any combination of:
+Targets accept CIDR networks, full or short IPv4 ranges, individual addresses, and comma/newline-separated lists. Automatic interface discovery is limited by the minimum prefix (default `/24`) and total address cap (default `4096`). Scan only authorized networks.
 
-```text
-192.168.1.0/24
-192.168.10.20-40
-10.20.30.40-10.20.30.55
-10.0.0.8, 10.0.0.9
-```
-
-Automatic target detection reads active, non-loopback IPv4 interfaces. The minimum automatic prefix (default `/24`) avoids accidentally expanding a large corporate or VPN network; the global address limit (default `4096`) is an additional guard. Scan only networks you are authorized to scan.
-
-Identification uses public device responses rather than a hard-coded host-name guess:
-
-- Gen2+: `/shelly`, `Shelly.GetDeviceInfo`, `Shelly.GetStatus`
 - Gen1: `/shelly`, `/settings`, `/status`
-- Model, application/profile, component keys and a small Gen1 model-code map are retained as evidence.
-- The inventory records identification confidence and evidence, so uncertain results stay visible.
+- Gen2–Gen4: `/shelly`, `Shelly.GetDeviceInfo`, `Shelly.GetStatus`
+- Stable-only is the default firmware policy; beta must be explicitly allowed.
+- `firmwareCheckTimeoutMs` defaults to `2500`, accepts `250–60000`, and is passed unchanged to the complete check and all related requests.
+- One device timeout/error is recorded and does not stop the remaining read-only firmware checks.
 
-The design was informed by the [official Shelly API documentation](https://shelly-api-docs.shelly.cloud/) and the public architecture of [windkh/node-red-contrib-shelly](https://github.com/windkh/node-red-contrib-shelly). No third-party source code is included or copied.
+## Local persistence and migration
 
-## Persistent inventory through Node-RED Context
-
-No private Node-RED files are read or written. State uses only `node.context().get/set` and a named store.
-
-Recommended `settings.js` configuration:
+State uses only the supported Node-RED `node.context().get/set` API. Configure a `localfilesystem` store for restart durability:
 
 ```js
 contextStorage: {
-  default: { module: "memory" },
-  file: {
-    module: "localfilesystem",
-    config: {
-      flushInterval: 30
-    }
-  }
+  default: "memoryOnly",
+  memoryOnly: { module: "memory" },
+  file: { module: "localfilesystem", config: { flushInterval: 30 } }
 }
 ```
 
-Set the configuration node's **Context store name** to `file`. On startup it performs a read-after-write probe and inspects the public Node-RED context configuration when available:
+Version 0.2.0 writes explicit state schema `2` under `shellyAdminStateV2`. On first start it can load schema-1 state from the 0.1.x key, then independently migrates:
 
-- a verified `localfilesystem` store is reported as durable;
-- an unavailable named store falls back cleanly to the default store and emits a warning;
-- memory or unverifiable custom stores remain usable, but are clearly reported as non-durable/unverified.
+- inventory and active/resolved errors;
+- raw history and hourly aggregates;
+- temperature and anomaly state;
+- selected Context-store configuration, which remains a normal Node-RED config-node property.
 
-After a restart, the inventory and analysis state are loaded first. An initial run validates known addresses. A full scan happens only when the inventory is empty, is explicitly requested, or the full-scan interval is due. This avoids unconditional re-inventory of the complete network.
+A damaged optional section is isolated and reported while a valid inventory continues to load. The runtime does not force a full re-inventory merely because history or analysis state is invalid. Node-RED’s file Context store may cache writes until its `flushInterval`; plan backups accordingly.
 
-Node-RED's file store is cached by default. An unexpected process termination can lose values that have not yet reached its configured flush interval; choose the interval according to storage-wear and durability needs.
+Old config nodes do not need to be recreated. Missing or empty numeric fields are replaced with documented concrete defaults in the editor and on save. In particular, an old `firmwareCheckTimeoutMs: ""` becomes `2500`, not the minimum clamp.
 
-## History and transparent anomaly hints
+## Historical monitoring 2.0
 
-For each device the monitor stores a bounded raw history (default 48 hours) and time-bucket aggregates (default 90 days, one-hour buckets). Retention is configurable. Available metrics include:
+The history engine stores only measurements that a device actually reports. Availability is retained explicitly; missing temperature, RSSI, resource, or electrical values are not converted to zero.
 
-- temperature and hardware overtemperature indication;
-- HTTP response time and reachability;
-- Wi-Fi RSSI, uptime and detected restart events;
-- free RAM/filesystem percentages;
-- firmware and configuration changes;
-- active power, current, voltage and energy where the device reports them.
+Tracked values, where available:
 
-Anomaly logic deliberately has **no opaque combined score**:
+- reachability and HTTP latency;
+- temperature, RSSI and uptime;
+- free RAM and filesystem percentages;
+- active power, current, voltage and cumulative energy;
+- firmware version and configuration revision as change dimensions.
 
-1. A minimum history and a warm-up after firmware/configuration changes are required.
-2. Current values are compared with the device's median and median absolute deviation (MAD).
-3. Metric-specific absolute and robust-deviation thresholds must both be met (with a stricter absolute fallback when historical dispersion is zero).
-4. Comparable peers use the same model first and device type only as fallback; insufficient peer data is reported, not fabricated.
-5. Consecutive breaches, clear hysteresis and cooldown control opening, clearing and repeat emission.
-6. Missing metrics are skipped and included in data-quality reporting.
+Defaults:
 
-Every observation contains `observation`, `baseline`, `deviation`, `peerComparison`, `confidence`, `dataQuality`, `reasons` and `lifecycle`. It is explicitly an **early-warning anomaly indication**, not a guaranteed failure prediction.
+| Setting | Default |
+|---|---:|
+| Raw retention | 48 hours |
+| Aggregate retention | 90 days |
+| Bucket width | 60 minutes |
+| Raw samples/device | 10,000 |
+| Aggregate buckets/device | 10,000 |
+| Approximate history bytes/device | 1,048,576 |
 
-## Temperature policy safety
+Raw samples and aggregate buckets coexist. Buckets retain count, mean, min, max, last, coverage, and missing ratio. Save-time compaction enforces age, item, and per-device byte limits. Metadata records sample count, first/last measurement, estimated cadence, missing ratio, warm-up, restart history, and firmware/configuration segments. Aggregates allow baselines to survive Node-RED restarts and raw-data expiry.
 
-Default behavior is monitoring/notification only. Automatic switch-off requires **both**:
+## Device baselines and anomaly profiles
+
+The device’s own baseline is primary. It uses median, median absolute deviation (MAD), and p05/p25/p50/p75/p95 instead of an opaque total score.
+
+| Profile | Minimum samples | Warm-up | Trigger | Clear | Cooldown |
+|---|---:|---:|---:|---:|---:|
+| **Conservative** (default) | 24 | 12 | 3 | 3 | 120 min |
+| Balanced | 16 | 8 | 3 | 2 | 60 min |
+| Sensitive | 10 | 5 | 2 | 2 | 30 min |
+| Custom | Explicit field values | Explicit | Explicit | Explicit | Explicit |
+
+A firmware or relevant configuration revision change starts a new baseline segment and warm-up. A single peak cannot open a trend. Multiple normal observations are required to clear it. Cooldown limits updated alerts while `present` can still describe current state.
+
+## Cautious peer comparison
+
+Peers must match generation, model/model-code, profile, measurement capabilities, and—by default—firmware major version. The default group minimum is three devices including the current device. Peer comparison is supplementary; it never replaces the device baseline. An unsuitable/small group produces no peer-only warning. Observation metadata records group size, minimum, selection criteria, reasons, and peer IDs when used.
+
+## Observation categories
+
+Each category can be enabled separately in the configuration node:
+
+- recovery/error lifecycle;
+- latency trend;
+- temperature trend;
+- restart pattern;
+- RAM/filesystem resource trend;
+- conservative electrical observations;
+- peer comparison.
+
+Latency trends require sustained deviation from the own baseline. When enough devices degrade concurrently, observations identify a **possible shared network factor** without claiming a root cause.
+
+Temperature trends are separate from static `warning`, `critical`, and hardware-overtemperature safety classification. Simultaneous power is included as context when available. A temperature trend alone never triggers shutdown.
+
+Restart analysis records uptime decreases and a bounded restart history. Firmware updates and requested maintenance reboots create expectation markers. Unexpected repeated restarts are reported separately; counter reset, missing uptime, and API uncertainty remain explicit.
+
+Resource analysis skips unsupported metrics and requires sustained RAM/filesystem change. Electrical analysis is deliberately conservative: isolated zero-power values are not alerts, energy-counter decreases require repetition, non-negative counter deltas can form an energy-rate baseline, and wording allows usage changes, reset, data gaps, firmware behavior, or device replacement. No defect is asserted.
+
+## Observation Schema 2
+
+Observations use `shelly-admin.observation/2` and are backward-friendly JSON objects. Lifecycle values are:
+
+- `opened` — condition became active;
+- `present` — still active, no new alert transition;
+- `updated` — materially changed after cooldown;
+- `cleared` — enough normal observations closed it;
+- `suppressed` — candidate not promoted because warm-up, sample count, coverage, or policy was insufficient.
+
+Every anomaly observation exposes the measured value, own baseline, optional peer comparison, confidence, data quality, reasons, and a safety disclaimer. No overall health grade or guaranteed failure forecast is produced.
+
+An offline incident stores one active `lastError` with occurrence and latest-occurrence timestamps plus an occurrence count. Repeated failed probes do not emit duplicate open events. The first successful discovery, monitor, firmware-check, update validation, or reboot validation clears it exactly once, preserves `lastResolvedError` with occurrence/resolution times and resolution reason, and leaves the device in inventory.
+
+## Monitor modes and status
+
+The monitor offers:
+
+- **Current state only**;
+- **Transitions only**;
+- **Current state and transitions** (default and 0.1.x-compatible behavior).
+
+The three existing outputs remain Health, Alerts, and Errors. Alert payloads include the selected mode and structured observations. Node status shows online/offline, warning, critical, anomaly, firmware-update, and warm-up counts.
+
+## Temperature safety
+
+Defaults are 70 °C warning, 85 °C critical, 5 °C hysteresis, three consecutive samples, and 15-minute cooldown. Hardware overtemperature is a separate classification. Automatic shutdown requires both:
 
 1. monitor mode `actions`; and
-2. an exact device policy (`id`, `ip` or `mac`) with `temperature.autoShutdown: true`.
-
-Example (still disabled until `autoShutdown` is changed deliberately):
+2. an exact `id`, `ip`, or `mac` policy with `temperature.autoShutdown: true`.
 
 ```json
 [
@@ -149,63 +186,16 @@ Example (still disabled until `autoShutdown` is changed deliberately):
 ]
 ```
 
-Hardware overtemperature flags are also considered. Only known switch outputs are addressed. **No automatic re-enable is performed**, including after temperature recovery or restart.
+Only known switch outputs are addressed. Automatic re-enable is never performed.
 
-## Firmware and reboot safety
-
-- Firmware checks are read-only.
-- Dry-run is the default for updates and reboots.
-- Input-triggered real updates/reboots require `msg.confirm === true`.
-- An empty device selector never means all devices unless `allowAll` is explicitly enabled.
-- Rolling execution is sequential (`maxSimultaneouslyUnavailable: 1`).
-- Each device is checked for reachability/health after the request before the configured stagger delay.
-- Conditions: always, restart required, uptime threshold, free RAM threshold, firmware available.
-- Scheduled mode defaults to check/notify. Automatic scheduled updates need the dedicated option and non-dry-run configuration.
-
-Example trigger:
-
-```js
-msg.action = "reboot";
-msg.devices = ["shellyplus1pm-aabbccddeeff"];
-msg.condition = { type: "restartRequired" };
-msg.dryRun = false;
-msg.confirm = true;
-return msg;
-```
-
-## Output example
-
-```json
-{
-  "schema": "shelly-admin.observation/1",
-  "kind": "early-warning",
-  "prediction": false,
-  "device": { "id": "...", "ip": "192.168.1.20", "model": "..." },
-  "metric": "temperatureC",
-  "observation": { "value": 73.2, "unit": "°C" },
-  "baseline": { "method": "median-and-MAD", "count": 48, "median": 55.1, "mad": 1.2 },
-  "deviation": { "absolute": 18.1, "robustZ": 10.17, "direction": "high" },
-  "confidence": "medium",
-  "dataQuality": { "sampleCount": 48, "completeness": 1, "warmup": false },
-  "reasons": ["..."],
-  "disclaimer": "Early-warning anomaly indication only; not a guaranteed failure prediction."
-}
-```
-
-## Credentials and network security
-
-Credentials are stored using Node-RED credentials, not flow properties. Gen1 Basic and Gen2+ Digest authentication challenges are supported. Traffic to local device HTTP APIs is not encrypted when devices expose only HTTP; use network segmentation and trusted administration networks. Passwords are never placed into output messages.
-
-## Development
+## Development and verification
 
 ```bash
-npm install
+npm ci
 npm run lint
 npm test
 npm run test:coverage
 npm pack --dry-run
 ```
 
-Tests cover target parsing/limits, Gen1/Gen2 normalization, persistence fallback behavior, history/anomaly safeguards, temperature opt-in and maintenance selection/conditions. The dependency-free lint step validates JavaScript syntax, JSON, line endings and whitespace. GitHub Actions runs lint, tests and package validation on supported Node.js versions. Publishing is prepared as a manually approved/tag-driven npm workflow with provenance.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [CHANGELOG.md](CHANGELOG.md) and [NOTICE.md](NOTICE.md).
+Release commands, npm publishing, Node-RED linking, Docker installation, checksums, and rollback-oriented verification are in [RELEASE.md](RELEASE.md). Changes are listed in [CHANGELOG.md](CHANGELOG.md) and [RELEASE-NOTES-0.2.0.md](RELEASE-NOTES-0.2.0.md).

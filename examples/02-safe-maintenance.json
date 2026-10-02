@@ -22,17 +22,37 @@
     "rawRetentionHours": 48,
     "aggregateRetentionDays": 90,
     "bucketMinutes": 60,
-    "anomalyMinSamples": 12,
-    "anomalyWarmupSamples": 6,
+    "anomalyMinSamples": 24,
+    "anomalyWarmupSamples": 12,
     "anomalyTriggerConsecutive": 3,
-    "anomalyClearConsecutive": 2,
-    "anomalyCooldownMinutes": 60,
+    "anomalyClearConsecutive": 3,
+    "anomalyCooldownMinutes": 120,
     "temperatureWarningC": 70,
     "temperatureCriticalC": 85,
     "temperatureHysteresisC": 5,
     "temperatureConsecutive": 3,
     "temperatureCooldownMinutes": 15,
-    "policies": "[]"
+    "policies": "[]",
+    "firmwarePolicy": "stable",
+    "maintenanceDeviceTimeoutSeconds": 15,
+    "maintenanceRunTimeoutSeconds": 900,
+    "firmwareCheckTimeoutMs": 2500,
+    "maxRawSamplesPerDevice": 10000,
+    "maxBucketsPerDevice": 10000,
+    "maxBytesPerDevice": 1048576,
+    "anomalyProfile": "Conservative",
+    "baselineWindowDays": 30,
+    "peerMinDevices": 3,
+    "peerFirmwareMajor": true,
+    "restartWindowHours": 24,
+    "restartThreshold": 3,
+    "enableRecovery": true,
+    "enableLatencyTrend": true,
+    "enableTemperatureTrend": true,
+    "enableRestartPattern": true,
+    "enableResources": true,
+    "enableElectrical": true,
+    "enablePeerComparison": true
   },
   {
     "id": "maintenance-02",
@@ -44,7 +64,6 @@
     "deviceSelectors": "REPLACE-WITH-EXACT-DEVICE-ID",
     "allowAll": false,
     "dryRun": true,
-    "stage": "stable",
     "staggerSeconds": 60,
     "waitBeforeValidationSeconds": 5,
     "validationTimeoutSeconds": 180,
@@ -56,27 +75,65 @@
     "automaticUpdates": false,
     "x": 390,
     "y": 120,
-    "wires": [["debug-result-02"], ["debug-progress-02"], ["debug-errors-02"]]
+    "wires": [
+      [
+        "debug-result-02"
+      ],
+      [
+        "debug-progress-02"
+      ],
+      [
+        "debug-errors-02"
+      ]
+    ],
+    "firmwarePolicy": "stable",
+    "deviceTimeoutSeconds": 15,
+    "runTimeoutSeconds": 900
   },
   {
     "id": "inject-check-02",
     "type": "inject",
     "z": "tab-shelly-admin-02",
     "name": "Check firmware",
-    "props": [{ "p": "action", "v": "check", "vt": "str" }],
+    "props": [
+      {
+        "p": "action",
+        "v": "check",
+        "vt": "str"
+      }
+    ],
     "x": 140,
     "y": 80,
-    "wires": [["maintenance-02"]]
+    "wires": [
+      [
+        "maintenance-02"
+      ]
+    ]
   },
   {
     "id": "inject-dry-02",
     "type": "inject",
     "z": "tab-shelly-admin-02",
     "name": "Dry-run update",
-    "props": [{ "p": "action", "v": "update", "vt": "str" }, { "p": "dryRun", "v": "true", "vt": "bool" }],
+    "props": [
+      {
+        "p": "action",
+        "v": "update",
+        "vt": "str"
+      },
+      {
+        "p": "dryRun",
+        "v": "true",
+        "vt": "bool"
+      }
+    ],
     "x": 140,
     "y": 140,
-    "wires": [["maintenance-02"]]
+    "wires": [
+      [
+        "maintenance-02"
+      ]
+    ]
   },
   {
     "id": "debug-result-02",
@@ -116,7 +173,7 @@
     "type": "comment",
     "z": "tab-shelly-admin-02",
     "name": "Keep dry-run enabled until exact pilot IDs and conditions are verified",
-    "info": "Real input-triggered update/reboot also requires msg.confirm=true. Use at your own risk – no warranty.",
+    "info": "Real input-triggered update/reboot also requires msg.confirm=true. Use at your own risk \u2013 no warranty.",
     "x": 360,
     "y": 40,
     "wires": []

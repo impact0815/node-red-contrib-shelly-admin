@@ -1,10 +1,76 @@
 {
   "shelly-admin-maintenance": {
-    "label": { "default": "Shelly maintenance", "palette": "Shelly maintenance", "name": "Name", "admin": "Administration", "action": "Action", "deviceSelectors": "Device IDs / IPs / MACs", "allowAll": "Explicitly allow all devices", "dryRun": "Dry-run", "stage": "Firmware channel", "staggerSeconds": "Stagger delay (s)", "waitBeforeValidationSeconds": "Wait before validation (s)", "validationTimeoutSeconds": "Validation timeout (s)", "conditionType": "Condition", "conditionValue": "Condition value", "failFast": "Stop on first failure", "scheduleHours": "Schedule interval (h, 0=off)", "scheduleMode": "Schedule mode", "automaticUpdates": "Explicitly allow scheduled updates" },
-    "option": { "check": "Check firmware", "update": "Update firmware", "reboot": "Reboot", "always": "Always", "restartRequired": "Restart required", "uptimeAbove": "Uptime above seconds", "ramBelow": "Free RAM below percent", "firmwareAvailable": "Firmware update available", "notify": "Notify / check only", "auto": "Automatic rolling update" },
-    "output": { "result": "result", "progress": "per-device results", "errors": "errors" },
-    "tip": { "safety": "Dry-run is the safe default. Input-triggered updates and reboots also require msg.confirm=true. Roll out in stages and supervise." },
-    "status": { "running": "{{action}} running", "done": "{{completed}} completed · {{failed}} failed", "error": "maintenance error" },
-    "error": { "noConfig": "A valid Shelly administration configuration is required.", "busy": "A maintenance run is already active." }
+    "label": {
+      "default": "Shelly maintenance",
+      "palette": "Shelly maintenance",
+      "name": "Name",
+      "admin": "Administration",
+      "action": "Action",
+      "deviceSelectors": "Device IDs / IPs / MACs",
+      "allowAll": "Explicitly allow all devices",
+      "dryRun": "Dry-run",
+      "staggerSeconds": "Stagger delay (s)",
+      "waitBeforeValidationSeconds": "Wait before validation (s)",
+      "validationTimeoutSeconds": "Validation timeout (s)",
+      "conditionType": "Condition",
+      "conditionValue": "Condition value",
+      "failFast": "Stop update/reboot on first failure",
+      "scheduleHours": "Schedule interval (h, 0=off)",
+      "scheduleMode": "Schedule mode",
+      "automaticUpdates": "Explicitly allow scheduled updates",
+      "firmwarePolicy": "Firmware policy",
+      "deviceTimeoutSeconds": "Update/reboot device timeout (s)",
+      "runTimeoutSeconds": "Run timeout (s)"
+    },
+    "option": {
+      "check": "Check firmware",
+      "update": "Update firmware",
+      "reboot": "Reboot",
+      "always": "Always",
+      "restartRequired": "Restart required",
+      "uptimeAbove": "Uptime above seconds",
+      "ramBelow": "Free RAM below percent",
+      "firmwareAvailable": "Firmware update available",
+      "notify": "Notify / check only",
+      "auto": "Automatic rolling update",
+      "stableOnly": "Stable only",
+      "allowBeta": "Allow beta"
+    },
+    "output": {
+      "result": "final result",
+      "progress": "structured progress",
+      "errors": "errors"
+    },
+    "tip": {
+      "safety": "Dry-run is the safe default. Input-triggered updates and reboots also require msg.confirm=true. Roll out in stages and supervise."
+    },
+    "status": {
+      "done": "{{action}} done · {{processed}}/{{total}} · {{updates}} upd · {{timeouts}} timeout · {{errors}} err · FW {{firmwareTimeoutMs}} ms",
+      "stopped": "{{action}} stopped · {{processed}}/{{total}} · {{updates}} upd · {{timeouts}} timeout · {{errors}} err · FW {{firmwareTimeoutMs}} ms",
+      "error": "maintenance error",
+      "starting": "{{action}} started · 0/{{total}} · FW {{firmwareTimeoutMs}} ms",
+      "progress": "{{action}} {{processed}}/{{total}} · {{updates}} upd · {{timeouts}} timeout · {{errors}} err · FW {{firmwareTimeoutMs}} ms · {{phase}}"
+    },
+    "error": {
+      "noConfig": "A valid Shelly administration configuration is required.",
+      "busy": "A maintenance run is already active."
+    },
+    "action": {
+      "check": "firmware check",
+      "update": "firmware update",
+      "reboot": "reboot"
+    },
+    "phase": {
+      "starting": "starting",
+      "checking": "checking",
+      "updating": "updating",
+      "rebooting": "rebooting",
+      "waiting": "waiting",
+      "completed": "completed",
+      "completedWithIssues": "completed with issues",
+      "failed": "failed",
+      "timedOut": "timed out",
+      "aborted": "aborted"
+    }
   }
 }

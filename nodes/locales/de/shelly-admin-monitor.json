@@ -1,10 +1,48 @@
 {
   "shelly-admin-monitor": {
-    "label": { "default": "Shelly-Überwachung", "palette": "Shelly-Überwachung", "name": "Name", "admin": "Verwaltung", "periodic": "Regelmäßig abfragen", "intervalSeconds": "Intervall (s)", "automationMode": "Automatikmodus" },
-    "option": { "off": "Nur beobachten", "notify": "Benachrichtigen", "actions": "Explizite Richtlinienaktionen" },
-    "output": { "health": "Gesundheitswerte", "alerts": "Hinweise", "errors": "Fehler" },
-    "tip": { "actions": "Der Aktionsmodus erfordert zusätzlich eine exakte autoShutdown-Richtlinie je Gerät. Ausgänge werden nie automatisch wiedereingeschaltet." },
-    "status": { "polling": "Abfrage läuft", "ready": "{{reachable}}/{{count}} erreichbar", "error": "Überwachungsfehler" },
-    "error": { "noConfig": "Eine gültige Shelly-Verwaltungskonfiguration ist erforderlich.", "busy": "Ein Überwachungszyklus läuft bereits." }
+    "label": {
+      "default": "Shelly-Überwachung",
+      "palette": "Shelly-Überwachung",
+      "name": "Name",
+      "admin": "Verwaltung",
+      "periodic": "Regelmäßig abfragen",
+      "intervalSeconds": "Intervall (s)",
+      "automationMode": "Automatikmodus",
+      "firmwarePolicy": "Firmware-Richtlinie",
+      "outputMode": "Ausgabemodus Beobachtungen"
+    },
+    "option": {
+      "off": "Nur beobachten",
+      "notify": "Benachrichtigen",
+      "actions": "Explizite Richtlinienaktionen",
+      "inheritPolicy": "Richtlinie der Verwaltung verwenden",
+      "stableOnly": "Nur Stable",
+      "allowBeta": "Beta erlauben",
+      "current": "Nur aktueller Zustand",
+      "transitions": "Nur Übergänge",
+      "currentAndTransitions": "Aktueller Zustand und Übergänge"
+    },
+    "output": {
+      "health": "Gesundheitswerte",
+      "alerts": "Hinweise",
+      "errors": "Fehler"
+    },
+    "tip": {
+      "actions": "Der Aktionsmodus erfordert zusätzlich eine exakte autoShutdown-Richtlinie je Gerät. Ausgänge werden nie automatisch wiedereingeschaltet."
+    },
+    "status": {
+      "polling": "Abfrage läuft",
+      "ready": "{{online}} online · {{offline}} offline",
+      "error": "Überwachungsfehler",
+      "warning": "{{online}} online · {{offline}} offline · {{warnings}} Warnungen",
+      "critical": "{{online}} online · {{offline}} offline · {{critical}} kritisch",
+      "readyDetailed": "{{online}} an · {{offline}} aus · {{anomalies}} Anomalien · {{firmware}} FW · {{warmup}} Warm-up",
+      "warningDetailed": "{{online}} an · {{offline}} aus · {{warnings}} Warnungen · {{anomalies}} Anomalien · {{firmware}} FW · {{warmup}} Warm-up",
+      "criticalDetailed": "{{online}} an · {{offline}} aus · {{critical}} kritisch · {{anomalies}} Anomalien · {{firmware}} FW · {{warmup}} Warm-up"
+    },
+    "error": {
+      "noConfig": "Eine gültige Shelly-Verwaltungskonfiguration ist erforderlich.",
+      "busy": "Ein Überwachungszyklus läuft bereits."
+    }
   }
 }

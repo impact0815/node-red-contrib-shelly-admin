@@ -1,21 +1,34 @@
 <script type="text/javascript">
-  RED.nodes.registerType("shelly-admin-monitor", {
-    category: "network",
-    color: "#E5A93D",
-    defaults: {
-      name: { value: "" },
-      admin: { value: "", type: "shelly-admin-config", required: true },
-      periodic: { value: true },
-      intervalSeconds: { value: 60, validate: RED.validators.number() },
-      automationMode: { value: "notify" }
-    },
-    inputs: 1,
-    outputs: 3,
-    icon: "font-awesome/fa-heartbeat",
-    outputLabels: function (index) { return this._(["shelly-admin-monitor.output.health", "shelly-admin-monitor.output.alerts", "shelly-admin-monitor.output.errors"][index]); },
-    label: function () { return this.name || this._("shelly-admin-monitor.label.default"); },
-    paletteLabel: function () { return this._("shelly-admin-monitor.label.palette"); }
-  });
+  (function () {
+    function text(context, key, fallback) {
+      try {
+        if (context && typeof context._ === "function") return context._(key);
+        if (typeof RED._ === "function") return RED._(key);
+      } catch (_error) {
+        // Keep editor rendering safe when i18n is unavailable.
+      }
+      return fallback;
+    }
+    RED.nodes.registerType("shelly-admin-monitor", {
+      category: "network",
+      color: "#E5A93D",
+      defaults: {
+        name: { value: "" },
+        admin: { value: "", type: "shelly-admin-config", required: true },
+        periodic: { value: true },
+        intervalSeconds: { value: 60, validate: RED.validators.number() },
+        automationMode: { value: "notify" },
+        firmwarePolicy: { value: "" },
+        outputMode: { value: "current-and-transitions" }
+      },
+      inputs: 1,
+      outputs: 3,
+      icon: "font-awesome/fa-heartbeat",
+      outputLabels: function (index) { return text(this, ["shelly-admin-monitor.output.health", "shelly-admin-monitor.output.alerts", "shelly-admin-monitor.output.errors"][index], ["Health", "Alerts", "Errors"][index]); },
+      label: function () { return this.name || text(this, "shelly-admin-monitor.label.default", "Shelly monitor"); },
+      paletteLabel: function () { return text(this, "shelly-admin-monitor.label.palette", "Shelly monitor"); }
+    });
+  }());
 </script>
 <script type="text/html" data-template-name="shelly-admin-monitor">
   <div class="form-row"><label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="shelly-admin-monitor.label.name"></span></label><input type="text" id="node-input-name"></div>
@@ -23,12 +36,15 @@
   <div class="form-row"><label for="node-input-periodic"><span data-i18n="shelly-admin-monitor.label.periodic"></span></label><input type="checkbox" id="node-input-periodic" style="width:auto"></div>
   <div class="form-row"><label for="node-input-intervalSeconds"><span data-i18n="shelly-admin-monitor.label.intervalSeconds"></span></label><input type="number" id="node-input-intervalSeconds" min="10"></div>
   <div class="form-row"><label for="node-input-automationMode"><span data-i18n="shelly-admin-monitor.label.automationMode"></span></label><select id="node-input-automationMode"><option value="off" data-i18n="shelly-admin-monitor.option.off"></option><option value="notify" data-i18n="shelly-admin-monitor.option.notify"></option><option value="actions" data-i18n="shelly-admin-monitor.option.actions"></option></select></div>
+  <div class="form-row"><label for="node-input-firmwarePolicy"><span data-i18n="shelly-admin-monitor.label.firmwarePolicy"></span></label><select id="node-input-firmwarePolicy"><option value="" data-i18n="shelly-admin-monitor.option.inheritPolicy"></option><option value="stable" data-i18n="shelly-admin-monitor.option.stableOnly"></option><option value="allow-beta" data-i18n="shelly-admin-monitor.option.allowBeta"></option></select></div>
+  <div class="form-row"><label for="node-input-outputMode"><span data-i18n="shelly-admin-monitor.label.outputMode"></span></label><select id="node-input-outputMode"><option value="current" data-i18n="shelly-admin-monitor.option.current"></option><option value="transitions" data-i18n="shelly-admin-monitor.option.transitions"></option><option value="current-and-transitions" data-i18n="shelly-admin-monitor.option.currentAndTransitions"></option></select></div>
   <div class="form-tips"><span data-i18n="shelly-admin-monitor.tip.actions"></span></div>
 </script>
 <script type="text/html" data-help-name="shelly-admin-monitor">
   <p>Polls inventoried devices for reachability, response time, temperature, overtemperature, Wi-Fi RSSI, uptime, memory/filesystem, firmware state and available electrical values.</p>
   <p>History is bounded and aggregated. Early-warning observations compare explicit current values with the device's own median/MAD baseline and, when enough comparable devices exist, peer medians. Every observation includes reasons, baseline, deviation, confidence and data quality. There is no opaque overall score and no guaranteed failure prediction.</p>
   <p>Firmware/configuration changes start a warm-up period. Minimum samples, consecutive breaches, hysteresis, cooldown and missing-value handling reduce false alerts.</p>
+  <p>Version 0.2.0 emits Observation Schema 2 lifecycle states (<code>opened</code>, <code>present</code>, <code>updated</code>, <code>cleared</code>, <code>suppressed</code>) for firmware, offline/recovered, restart, temperature, latency, resource and conservative electrical observations. Select current state, transitions, or both without changing the existing three-output wiring.</p>
   <p><strong>Temperature safety:</strong> notifications are emitted first. An output can be switched off only in <em>Actions</em> mode and only when the exact device policy explicitly sets <code>autoShutdown:true</code>. No automatic re-enable occurs.</p>
   <p><strong>⚠️ Use at your own risk – no warranty.</strong> This is not a certified fire-protection system and cannot replace smoke alarms, protective devices, supervision or professional electrical installation. Unofficial community project, not affiliated with Shelly or Allterco; provided “as is”.</p>
 </script>

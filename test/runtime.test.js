@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { evaluateCondition, parsePolicies, selectDevices } = require("../lib/runtime");
+const { evaluateCondition, normalizeConfig, parsePolicies, selectDevices } = require("../lib/runtime");
 
 const devices = [
   { id: "a", ip: "10.0.0.1", mac: "AA", health: { restartRequired: true, uptimeSec: 5000, ramFree: 10, ramSize: 100 }, firmware: { available: { hasUpdate: true } } },
@@ -25,4 +25,11 @@ test("evaluates supported reboot and update conditions", () => {
 test("requires policy JSON to be an array", () => {
   assert.deepEqual(parsePolicies("[]"), []);
   assert.throws(() => parsePolicies("{}"), { code: "ERR_POLICY_FORMAT" });
+});
+
+test("firmware check timeout defaults to 2500 ms and is bounded to 250-60000 ms", () => {
+  assert.equal(normalizeConfig({}).firmwareCheckTimeoutMs, 2500);
+  assert.equal(normalizeConfig({ firmwareCheckTimeoutMs: 1 }).firmwareCheckTimeoutMs, 250);
+  assert.equal(normalizeConfig({ firmwareCheckTimeoutMs: 120000 }).firmwareCheckTimeoutMs, 60000);
+  assert.equal(normalizeConfig({ firmwareCheckTimeoutMs: 4321 }).firmwareCheckTimeoutMs, 4321);
 });

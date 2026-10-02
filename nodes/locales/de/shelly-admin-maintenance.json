@@ -1,10 +1,76 @@
 {
   "shelly-admin-maintenance": {
-    "label": { "default": "Shelly-Wartung", "palette": "Shelly-Wartung", "name": "Name", "admin": "Verwaltung", "action": "Aktion", "deviceSelectors": "Geräte-IDs / IPs / MACs", "allowAll": "Alle Geräte explizit erlauben", "dryRun": "Probelauf", "stage": "Firmwarekanal", "staggerSeconds": "Staffelverzögerung (s)", "waitBeforeValidationSeconds": "Wartezeit vor Prüfung (s)", "validationTimeoutSeconds": "Prüfzeitlimit (s)", "conditionType": "Bedingung", "conditionValue": "Bedingungswert", "failFast": "Beim ersten Fehler stoppen", "scheduleHours": "Zeitplanintervall (h, 0=aus)", "scheduleMode": "Zeitplanmodus", "automaticUpdates": "Geplante Updates explizit erlauben" },
-    "option": { "check": "Firmware prüfen", "update": "Firmware aktualisieren", "reboot": "Neustart", "always": "Immer", "restartRequired": "Neustart erforderlich", "uptimeAbove": "Uptime über Sekunden", "ramBelow": "Freier RAM unter Prozent", "firmwareAvailable": "Firmwareupdate verfügbar", "notify": "Melden / nur prüfen", "auto": "Automatisches rollierendes Update" },
-    "output": { "result": "Ergebnis", "progress": "Geräteergebnisse", "errors": "Fehler" },
-    "tip": { "safety": "Der Probelauf ist der sichere Standard. Getriggerte Updates und Neustarts erfordern zusätzlich msg.confirm=true. Gestaffelt und beaufsichtigt ausrollen." },
-    "status": { "running": "{{action}} läuft", "done": "{{completed}} abgeschlossen · {{failed}} fehlgeschlagen", "error": "Wartungsfehler" },
-    "error": { "noConfig": "Eine gültige Shelly-Verwaltungskonfiguration ist erforderlich.", "busy": "Ein Wartungslauf ist bereits aktiv." }
+    "label": {
+      "default": "Shelly-Wartung",
+      "palette": "Shelly-Wartung",
+      "name": "Name",
+      "admin": "Verwaltung",
+      "action": "Aktion",
+      "deviceSelectors": "Geräte-IDs / IPs / MACs",
+      "allowAll": "Alle Geräte explizit erlauben",
+      "dryRun": "Probelauf",
+      "staggerSeconds": "Staffelverzögerung (s)",
+      "waitBeforeValidationSeconds": "Wartezeit vor Prüfung (s)",
+      "validationTimeoutSeconds": "Prüfzeitlimit (s)",
+      "conditionType": "Bedingung",
+      "conditionValue": "Bedingungswert",
+      "failFast": "Update/Neustart beim ersten Fehler stoppen",
+      "scheduleHours": "Zeitplanintervall (h, 0=aus)",
+      "scheduleMode": "Zeitplanmodus",
+      "automaticUpdates": "Geplante Updates explizit erlauben",
+      "firmwarePolicy": "Firmware-Richtlinie",
+      "deviceTimeoutSeconds": "Update-/Neustart-Zeitlimit je Gerät (s)",
+      "runTimeoutSeconds": "Laufzeitlimit (s)"
+    },
+    "option": {
+      "check": "Firmware prüfen",
+      "update": "Firmware aktualisieren",
+      "reboot": "Neustart",
+      "always": "Immer",
+      "restartRequired": "Neustart erforderlich",
+      "uptimeAbove": "Uptime über Sekunden",
+      "ramBelow": "Freier RAM unter Prozent",
+      "firmwareAvailable": "Firmwareupdate verfügbar",
+      "notify": "Melden / nur prüfen",
+      "auto": "Automatisches rollierendes Update",
+      "stableOnly": "Nur Stable",
+      "allowBeta": "Beta erlauben"
+    },
+    "output": {
+      "result": "Abschlussergebnis",
+      "progress": "strukturierter Fortschritt",
+      "errors": "Fehler"
+    },
+    "tip": {
+      "safety": "Der Probelauf ist der sichere Standard. Getriggerte Updates und Neustarts erfordern zusätzlich msg.confirm=true. Gestaffelt und beaufsichtigt ausrollen."
+    },
+    "status": {
+      "done": "{{action}} beendet · {{processed}}/{{total}} · {{updates}} Upd · {{timeouts}} Timeout · {{errors}} Fehler · FW {{firmwareTimeoutMs}} ms",
+      "stopped": "{{action}} gestoppt · {{processed}}/{{total}} · {{updates}} Upd · {{timeouts}} Timeout · {{errors}} Fehler · FW {{firmwareTimeoutMs}} ms",
+      "error": "Wartungsfehler",
+      "starting": "{{action}} gestartet · 0/{{total}} · FW {{firmwareTimeoutMs}} ms",
+      "progress": "{{action}} {{processed}}/{{total}} · {{updates}} Upd · {{timeouts}} Timeout · {{errors}} Fehler · FW {{firmwareTimeoutMs}} ms · {{phase}}"
+    },
+    "error": {
+      "noConfig": "Eine gültige Shelly-Verwaltungskonfiguration ist erforderlich.",
+      "busy": "Ein Wartungslauf ist bereits aktiv."
+    },
+    "action": {
+      "check": "Firmwareprüfung",
+      "update": "Firmwareupdate",
+      "reboot": "Neustart"
+    },
+    "phase": {
+      "starting": "Start",
+      "checking": "Prüfung",
+      "updating": "Update",
+      "rebooting": "Neustart",
+      "waiting": "Wartephase",
+      "completed": "abgeschlossen",
+      "completedWithIssues": "mit Problemen abgeschlossen",
+      "failed": "fehlgeschlagen",
+      "timedOut": "Zeitlimit",
+      "aborted": "abgebrochen"
+    }
   }
 }

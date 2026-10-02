@@ -1,1 +1,6 @@
-<script type="text/html" data-help-name="shelly-admin-monitor"><p>Monitors health values and emits transparent early-warning observations with baseline, deviation, confidence, data quality and reasons. Minimum data, warm-up, hysteresis and cooldown reduce false alerts.</p><p><strong>⚠️ Use at your own risk – no warranty.</strong> This is not a certified fire-protection system. Unofficial community project, not affiliated with Shelly or Allterco, provided “as is”. Automatic shutdown needs exact per-device opt-in; no automatic re-enable.</p></script>
+<script type="text/html" data-help-name="shelly-admin-monitor">
+  <p>Polls the persistent inventory and emits Observation Schema 2 records. Select Current state only, Transitions only, or Current state and transitions. Existing Health, Alerts and Errors outputs remain unchanged.</p>
+  <p>Device-own median/MAD/percentile baselines are primary. Cautious peers, minimum data, warm-up, consecutive trigger/clear samples, cooldown, coverage and missing-value handling reduce false alerts.</p>
+  <p>Recovery, latency, temperature trend, restart pattern, resources and conservative electrical observations use <code>opened</code>, <code>present</code>, <code>updated</code>, <code>cleared</code> and <code>suppressed</code>. Static temperature safety remains separate.</p>
+  <p><strong>⚠️ Use at your own risk – no warranty.</strong> Trends are not guaranteed failure predictions. Automatic shutdown needs exact-device opt-in and action mode; no automatic re-enable occurs.</p>
+</script>

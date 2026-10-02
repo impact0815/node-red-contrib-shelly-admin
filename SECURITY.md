@@ -21,6 +21,11 @@ Include affected version, Node.js/Node-RED versions, device generation/model/fir
 - Limit CIDR sizes/concurrency and scan only authorized networks.
 - Keep dry-run enabled until exact device selection and policy behavior have been reviewed.
 - Treat firmware, reboot and relay/shutdown operations as privileged changes.
-- Use a supported file-based Context store with suitable filesystem permissions and backups.
+- Select a supported file-based Context store from the editor dropdown and keep suitable filesystem permissions and backups. If none is available, treat the runtime warning as a durability issue and configure `localfilesystem` before relying on restart persistence.
+- State persistence uses only Node-RED's supported `node.context().get/set` API. Do not add direct reads or writes to Node-RED's private Context files; the editor endpoint exposes only store names and module classifications.
+- Treat schema-2 history and resolved-error records as operationally sensitive: they can contain device IDs, private IP addresses, model/firmware details and activity patterns. Restrict filesystem and backup access and define retention appropriate to the deployment.
+- Back up the Node-RED user directory before migration. State sections are migrated independently so a corrupt optional section cannot force valid inventory loss; investigate every migration warning before relying on trend continuity.
+- Anomaly, peer and trend outputs are advisory. Never use them as a sole fire, life-safety, electrical-protection, shutdown or restart decision. Keep manufacturer protections enabled.
+- Runtime translations, event listeners, timers and initialization failures are contained and reported. Keep Node-RED's normal process supervision enabled as defense in depth.
 
 This project is not a certified fire-protection or life-safety system.

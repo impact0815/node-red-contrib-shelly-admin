@@ -1,21 +1,32 @@
 <script type="text/javascript">
-  RED.nodes.registerType("shelly-admin-discovery", {
-    category: "network",
-    color: "#E5A93D",
-    defaults: {
-      name: { value: "" },
-      admin: { value: "", type: "shelly-admin-config", required: true },
-      mode: { value: "incremental" },
-      scanOnStart: { value: true },
-      startDelaySeconds: { value: 2, validate: RED.validators.number() }
-    },
-    inputs: 1,
-    outputs: 3,
-    icon: "font-awesome/fa-search",
-    outputLabels: function (index) { return this._(["shelly-admin-discovery.output.inventory", "shelly-admin-discovery.output.events", "shelly-admin-discovery.output.errors"][index]); },
-    label: function () { return this.name || this._("shelly-admin-discovery.label.default"); },
-    paletteLabel: function () { return this._("shelly-admin-discovery.label.palette"); }
-  });
+  (function () {
+    function text(context, key, fallback) {
+      try {
+        if (context && typeof context._ === "function") return context._(key);
+        if (typeof RED._ === "function") return RED._(key);
+      } catch (_error) {
+        // Keep editor rendering safe when i18n is unavailable.
+      }
+      return fallback;
+    }
+    RED.nodes.registerType("shelly-admin-discovery", {
+      category: "network",
+      color: "#E5A93D",
+      defaults: {
+        name: { value: "" },
+        admin: { value: "", type: "shelly-admin-config", required: true },
+        mode: { value: "incremental" },
+        scanOnStart: { value: true },
+        startDelaySeconds: { value: 2, validate: RED.validators.number() }
+      },
+      inputs: 1,
+      outputs: 3,
+      icon: "font-awesome/fa-search",
+      outputLabels: function (index) { return text(this, ["shelly-admin-discovery.output.inventory", "shelly-admin-discovery.output.events", "shelly-admin-discovery.output.errors"][index], ["Inventory", "Events", "Errors"][index]); },
+      label: function () { return this.name || text(this, "shelly-admin-discovery.label.default", "Shelly discovery"); },
+      paletteLabel: function () { return text(this, "shelly-admin-discovery.label.palette", "Shelly discovery"); }
+    });
+  }());
 </script>
 <script type="text/html" data-template-name="shelly-admin-discovery">
   <div class="form-row"><label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="shelly-admin-discovery.label.name"></span></label><input type="text" id="node-input-name"></div>
