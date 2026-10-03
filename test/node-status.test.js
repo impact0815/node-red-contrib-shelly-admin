@@ -84,12 +84,12 @@ test("Maintenance renders action, progress and update count without raw placehol
     config: { firmwareCheckTimeoutMs: 5000 },
     maintain: async (options) => {
       receivedOptions = options;
-      options.onProgress({ schema: "shelly-admin.maintenance-progress/1", timestamp: new Date().toISOString(), runId: "run-1", action: "check", phase: "checking", processed: 7, total: 24, configuredTimeouts: { firmwareCheckMs: 5000 }, summary: { eligibleUpdates: 1, timeouts: 1, errors: 0 } });
+      options.onProgress({ schema: "shelly-admin.maintenance-progress/1", timestamp: new Date().toISOString(), runId: "run-1", action: "check", phase: "checking", processed: 7, total: 24, configuredTimeouts: { firmwareCheckMs: 5000 }, summary: { checked: 7, eligible: 1, skipped: 6, updated: 0, failed: 1, timeouts: 1, errors: 0 } });
       return {
         schema: "shelly-admin.maintenance-result/1",
         timestamp: new Date().toISOString(),
         configuredTimeouts: { firmwareCheckMs: 5000 },
-        summary: { failed: 1, errors: 0, timeouts: 1, processed: 24, selected: 24, eligibleUpdates: 3 },
+        summary: { checked: 24, eligible: 3, skipped: 21, updated: 0, failed: 1, errors: 0, timeouts: 1, processed: 24, selected: 24, eligibleUpdates: 3 },
         results: [],
         errors: [{ code: "ETIMEDOUT", message: "check timed out for device-1 after 5000 ms", timeoutMs: 5000 }]
       };
@@ -98,9 +98,50 @@ test("Maintenance renders action, progress and update count without raw placehol
   const node = harness("../nodes/shelly-admin-maintenance", catalog("shelly-admin-maintenance"), runtime);
   await trigger(node);
   assert.equal(receivedOptions.firmwareCheckTimeoutMs, 5000);
-  assert.ok(node.statuses.some((item) => item.text === "firmware check 7/24 · 1 upd · 1 timeout · 0 err · FW 5000 ms · checking"));
-  assert.equal(node.statuses.at(-1).text, "firmware check done · 24/24 · 3 upd · 1 timeout · 0 err · FW 5000 ms");
+  assert.ok(node.statuses.some((item) => item.text === "7 checked · 1 eligible · 6 skipped · update 7/24 · 0 updated · 1 failed · 1 timeouts · checking"));
+  assert.equal(node.statuses.at(-1).text, "24 checked · 3 eligible · 21 skipped · 0 updated · 1 failed · 1 timeouts");
   assert.ok(node.statuses.every((item) => !/{{/.test(item.text)));
   assert.equal(node.sent.at(-1)[2].payload.configuredTimeouts.firmwareCheckMs, 5000);
   assert.equal(node.sent.at(-1)[2].payload.errors[0].timeoutMs, 5000);
+});
+
+
+test("Monitor detailed status reports actionable firmware, temperature, offline, anomaly and critical counts", async () => {
+  const runtime = {
+    monitor: async () => ({
+      schema: "shelly-admin.monitor-result/2",
+      timestamp: new Date().toISOString(),
+      runId: "monitor-1",
+      state: "completed",
+      summary: {
+        devices: 5,
+        reachable: 4,
+        unreachable: 1,
+        warnings: 3,
+        critical: 1,
+        anomalies: 4,
+        actionableAnomalies: 2,
+        firmwareUpdates: 1,
+        temperatureWarnings: 1,
+        warmup: 0,
+        processed: 5,
+        total: 5
+      },
+      lifecycle: {},
+      observations: [],
+      safetyEvents: [],
+      actions: [],
+      errors: [],
+      summaryText: "1 policy-eligible firmware update",
+      summaryTextDe: "1 berechtigtes Firmwareupdate",
+      humanSummary: { text: "1 policy-eligible firmware update" },
+      findingsSummary: {},
+      cards: {}
+    })
+  };
+  const node = harness("../nodes/shelly-admin-monitor", catalog("shelly-admin-monitor"), runtime);
+  await trigger(node);
+  assert.equal(node.statuses.at(-1).text, "FW updates: 1 · temperature warnings: 1 · offline: 1 · actionable anomalies: 2 · critical: 1");
+  assert.equal(node.sent.at(-1)[0].payload.humanSummary.text, "1 policy-eligible firmware update");
+  assert.equal(node.sent.at(-1)[1].payload.humanSummary.text, "1 policy-eligible firmware update");
 });

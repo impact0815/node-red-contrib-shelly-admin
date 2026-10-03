@@ -4,7 +4,7 @@
     "type": "tab",
     "label": "Shelly admin - discovery and monitoring",
     "disabled": false,
-    "info": "Use at your own risk \u2013 no warranty. Configure authorized networks only."
+    "info": "Use at your own risk – no warranty. Configure authorized networks only. Open the deployed Monitor node for Settings, Current Findings, History and Device Details. Editor data loads once per selected tab and otherwise only through Refresh; no periodic editor refresh."
   },
   {
     "id": "cfg-shelly-admin-01",
@@ -183,7 +183,7 @@
     "type": "comment",
     "z": "tab-shelly-admin-01",
     "name": "Not a certified fire-protection system. No automatic actions in notify mode.",
-    "info": "Use at your own risk \u2013 no warranty. Unofficial community project, not affiliated with Shelly or Allterco.",
+    "info": "Use at your own risk – no warranty. Unofficial community project, not affiliated with Shelly or Allterco.",
     "x": 360,
     "y": 40,
     "wires": []

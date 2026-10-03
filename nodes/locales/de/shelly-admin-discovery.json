@@ -7,7 +7,8 @@
       "admin": "Verwaltung",
       "mode": "Scanmodus",
       "scanOnStart": "Beim Start scannen",
-      "startDelaySeconds": "Startverzögerung (s)"
+      "startDelaySeconds": "Startverzögerung (s)",
+      "manualControl": "Manuelle Bedienung"
     },
     "option": {
       "incremental": "Inkrementell / validieren",
@@ -22,11 +23,31 @@
       "scanning": "Scan läuft",
       "ready": "{{count}} Geräte ({{online}} online)",
       "error": "Scanfehler",
-      "cached": "Cache: {{count}} Geräte ({{online}} online)"
+      "cached": "Cache: {{count}} Geräte ({{online}} online)",
+      "progress": "{{processed}}/{{total}} · {{phase}}",
+      "cancelling": "Scan wird abgebrochen",
+      "cancelled": "Scan abgebrochen · {{processed}}/{{total}}",
+      "idle": "inaktiv"
     },
     "error": {
       "noConfig": "Eine gültige Shelly-Verwaltungskonfiguration ist erforderlich.",
       "busy": "Ein Erkennungsscan läuft bereits."
+    },
+    "button": {
+      "start": "Scan starten",
+      "cancel": "Abbrechen"
+    },
+    "tip": {
+      "deployControls": "Zuerst deployen. Die Schaltflächen steuern die deployte Node und verwenden dieselbe Action-API wie msg.action."
+    },
+    "phase": {
+      "starting": "Start",
+      "scanning": "Scan",
+      "cancelRequested": "Abbruch angefordert",
+      "cancelled": "abgebrochen",
+      "completed": "abgeschlossen",
+      "completedWithIssues": "mit Problemen abgeschlossen",
+      "failed": "fehlgeschlagen"
     }
   }
 }

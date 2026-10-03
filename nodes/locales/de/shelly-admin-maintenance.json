@@ -20,7 +20,8 @@
       "automaticUpdates": "Geplante Updates explizit erlauben",
       "firmwarePolicy": "Firmware-Richtlinie",
       "deviceTimeoutSeconds": "Update-/Neustart-Zeitlimit je Gerät (s)",
-      "runTimeoutSeconds": "Laufzeitlimit (s)"
+      "runTimeoutSeconds": "Laufzeitlimit (s)",
+      "manualControl": "Manuelle Bedienung"
     },
     "option": {
       "check": "Firmware prüfen",
@@ -42,14 +43,18 @@
       "errors": "Fehler"
     },
     "tip": {
-      "safety": "Der Probelauf ist der sichere Standard. Getriggerte Updates und Neustarts erfordern zusätzlich msg.confirm=true. Gestaffelt und beaufsichtigt ausrollen."
+      "safety": "Der Probelauf ist der sichere Standard. Getriggerte Updates und Neustarts erfordern zusätzlich msg.confirm=true. Gestaffelt und beaufsichtigt ausrollen.",
+      "deployControls": "Zuerst deployen. Echte Updates und Neustarts erfordern eine zusätzliche Bestätigung; geräteseitig angenommene Aktionen können nicht zurückgerollt werden."
     },
     "status": {
-      "done": "{{action}} beendet · {{processed}}/{{total}} · {{updates}} Upd · {{timeouts}} Timeout · {{errors}} Fehler · FW {{firmwareTimeoutMs}} ms",
-      "stopped": "{{action}} gestoppt · {{processed}}/{{total}} · {{updates}} Upd · {{timeouts}} Timeout · {{errors}} Fehler · FW {{firmwareTimeoutMs}} ms",
+      "done": "{{checked}} geprüft · {{eligible}} berechtigt · {{skipped}} übersprungen · {{updated}} aktualisiert · {{failed}} fehlgeschlagen · {{timeouts}} Zeitlimits",
+      "stopped": "{{checked}} geprüft · {{eligible}} berechtigt · {{skipped}} übersprungen · {{updated}} aktualisiert · {{failed}} fehlgeschlagen · {{timeouts}} Zeitlimits",
       "error": "Wartungsfehler",
       "starting": "{{action}} gestartet · 0/{{total}} · FW {{firmwareTimeoutMs}} ms",
-      "progress": "{{action}} {{processed}}/{{total}} · {{updates}} Upd · {{timeouts}} Timeout · {{errors}} Fehler · FW {{firmwareTimeoutMs}} ms · {{phase}}"
+      "progress": "{{checked}} geprüft · {{eligible}} berechtigt · {{skipped}} übersprungen · Update {{processed}}/{{total}} · {{updated}} aktualisiert · {{failed}} fehlgeschlagen · {{timeouts}} Zeitlimits · {{phase}}",
+      "cancelling": "Wartung wird abgebrochen",
+      "cancelled": "{{action}} abgebrochen · {{processed}}/{{total}}",
+      "idle": "inaktiv"
     },
     "error": {
       "noConfig": "Eine gültige Shelly-Verwaltungskonfiguration ist erforderlich.",
@@ -70,7 +75,93 @@
       "completedWithIssues": "mit Problemen abgeschlossen",
       "failed": "fehlgeschlagen",
       "timedOut": "Zeitlimit",
-      "aborted": "abgebrochen"
+      "aborted": "abgebrochen",
+      "cancelRequested": "Abbruch angefordert",
+      "cancelled": "abgebrochen",
+      "eligible": "Berechtigungsprüfung abgeschlossen",
+      "planned": "Plan bereit",
+      "updated": "aktualisiert"
+    },
+    "button": {
+      "start": "Konfigurierte Aktion starten",
+      "cancel": "Abbrechen",
+      "refresh": "Aktualisieren"
+    },
+    "tabs": {
+      "settings": "Einstellungen",
+      "status": "Aktueller Status",
+      "devices": "Geräteübersicht",
+      "history": "Historie"
+    },
+    "common": {
+      "unavailable": "Nicht verfügbar"
+    },
+    "filters": {
+      "label": "Filter",
+      "all": "Alle Geräte",
+      "updateAvailable": "Update verfügbar",
+      "error": "Fehler",
+      "offline": "Offline",
+      "updated": "Erfolgreich aktualisiert",
+      "skipped": "Übersprungen"
+    },
+    "notify": {
+      "noRun": "Kein aktiver Lauf",
+      "sent": "Wartungsaktion angefordert",
+      "deploy": "Node vor der Editor-Bedienung deployen."
+    },
+    "confirm": {
+      "destructive": "Ausgewählte Wartungsaktion auf der deployten Node ausführen? Dies kann Ausfälle verursachen."
+    },
+    "statusView": {
+      "active": "Wartungslauf aktiv",
+      "idle": "Kein Wartungslauf aktiv",
+      "state": "Status",
+      "action": "Aktion",
+      "phase": "Phase",
+      "started": "Gestartet",
+      "progress": "Fortschritt",
+      "currentDevice": "Aktuelles Gerät",
+      "latest": "Letzter abgeschlossener Lauf",
+      "noLatest": "Kein abgeschlossener Wartungslauf verfügbar.",
+      "completed": "Abgeschlossen",
+      "summary": "Zusammenfassung",
+      "loading": "Aktueller Status wird geladen…",
+      "loadError": "Wartungsstatus konnte nicht geladen werden."
+    },
+    "devices": {
+      "total": "Geräte",
+      "empty": "Keine Geräte entsprechen diesem Filter.",
+      "noSelection": "Kein passendes Gerät ist ausgewählt.",
+      "loading": "Geräteübersicht wird geladen…",
+      "loadError": "Geräteübersicht konnte nicht geladen werden.",
+      "model": "Gerätename / Modell",
+      "id": "Geräte-ID",
+      "ip": "IP-Adresse",
+      "generation": "Generation",
+      "reachability": "Erreichbarkeit",
+      "currentFirmware": "Aktuelle Firmware",
+      "stableFirmware": "Verfügbare Stable-Firmware",
+      "betaFirmware": "Verfügbare Beta-Firmware",
+      "policy": "Firmware-Richtlinie",
+      "eligible": "Updateberechtigung",
+      "selectedTarget": "Ausgewähltes Updateziel",
+      "lastCheckStatus": "Status des letzten Firmwarechecks",
+      "lastCheckAt": "Letzter Firmwarecheck",
+      "lastUpdate": "Letztes Firmwareupdate",
+      "lastSuccessful": "Letztes erfolgreiches Update",
+      "lastFailed": "Letzter fehlgeschlagener Updateversuch",
+      "error": "Fehler / Zeitüberschreitung",
+      "recovery": "Recovery nach Update",
+      "maintenance": "Wartungslauf"
+    },
+    "history": {
+      "hint": "Die letzten 50 abgeschlossenen Wartungsläufe, neueste zuerst.",
+      "empty": "Noch keine Wartungsläufe aufgezeichnet.",
+      "loading": "Wartungshistorie wird geladen…",
+      "loadError": "Wartungshistorie konnte nicht geladen werden.",
+      "summary": "Angezeigt werden die letzten",
+      "deviceResults": "Geräteergebnisse"
     }
   }
 }

@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { assessFirmware } = require("../lib/firmware");
+const { DeviceHistory } = require("../lib/history");
 const { Inventory } = require("../lib/inventory");
 const { ShellyAdminRuntime } = require("../lib/runtime");
 
@@ -31,6 +32,7 @@ function runtimeWith(client, devices = [device()]) {
   runtime.inventory = new Inventory();
   devices.forEach((item) => runtime.inventory.upsert(item));
   runtime.client = client;
+  runtime.history = new DeviceHistory();
   runtime.save = async () => ({ saved: true });
   runtime.emitSafely = () => {};
   return runtime;
@@ -238,4 +240,77 @@ test("Stable only excludes beta-only updates and Allow beta makes them eligible"
   const beta = assessFirmware(betaOnly, "allow-beta");
   assert.equal(beta.eligible, true);
   assert.equal(beta.selectedChannel, "beta");
+});
+
+test("updates check every selected device first and mutate only policy-eligible devices", async () => {
+  const devices = [device("device-1"), device("device-2"), device("device-3")];
+  const checks = [];
+  const updates = [];
+  const validations = [];
+  const runtime = runtimeWith({
+    checkForUpdate: async (current) => {
+      checks.push(current.id);
+      if (current.id === "device-1") return { checkedAt: new Date().toISOString(), available: { stable: { version: "1.2.0" } } };
+      if (current.id === "device-2") return { checkedAt: new Date().toISOString(), available: { beta: { version: "2.0.0-beta1" } } };
+      return { checkedAt: new Date().toISOString(), available: null };
+    },
+    updateFirmware: async (current) => {
+      assert.equal(checks.length, 3, "all checks must finish before the first update");
+      updates.push(current.id);
+      return { accepted: true };
+    },
+    waitReachable: async (current) => {
+      validations.push(current.id);
+      return { ...current, firmware: { current: "1.2.0", available: null }, health: { reachable: true } };
+    }
+  }, devices);
+  const progress = [];
+  const result = await runtime.maintain({
+    action: "update",
+    allowAll: true,
+    dryRun: false,
+    confirmed: true,
+    firmwarePolicy: "stable",
+    staggerSeconds: 1,
+    runTimeoutMs: 5000,
+    waitBeforeValidationSeconds: 0.001,
+    validationTimeoutSeconds: 1,
+    onProgress: (item) => progress.push(item)
+  });
+  assert.deepEqual(checks, ["device-1", "device-2", "device-3"]);
+  assert.deepEqual(updates, ["device-1"]);
+  assert.deepEqual(validations, ["device-1"]);
+  assert.equal(progress.some((item) => item.phase === "waiting"), false);
+  assert.ok(progress.some((item) => item.phase === "checking" && item.total === 3));
+  assert.ok(progress.some((item) => item.phase === "updating" && item.total === 1));
+  assert.equal(result.summary.checked, 3);
+  assert.equal(result.summary.eligible, 1);
+  assert.equal(result.summary.skipped, 2);
+  assert.equal(result.summary.updated, 1);
+  assert.equal(result.summary.failed, 0);
+  assert.equal(result.summary.timeouts, 0);
+  assert.equal(result.results.find((item) => item.device.id === "device-2").reason, "no-policy-eligible-update");
+  assert.equal(result.summaryText, "3 checked • 1 eligible • 2 skipped • 1 updated • 0 failed • 0 timeouts");
+});
+
+test("update dry-run returns a compact eligible plan without update, stagger or validation work", async () => {
+  const devices = [device("device-1"), device("device-2")];
+  let updateCalls = 0;
+  let validationCalls = 0;
+  const runtime = runtimeWith({
+    checkForUpdate: async (current) => ({ checkedAt: new Date().toISOString(), available: current.id === "device-1" ? { stable: { version: "1.2.0" } } : null }),
+    updateFirmware: async () => { updateCalls += 1; return {}; },
+    waitReachable: async () => { validationCalls += 1; return device(); }
+  }, devices);
+  const progress = [];
+  const result = await runtime.maintain({ action: "update", allowAll: true, dryRun: true, staggerSeconds: 30, onProgress: (item) => progress.push(item) });
+  assert.equal(updateCalls, 0);
+  assert.equal(validationCalls, 0);
+  assert.equal(progress.some((item) => item.phase === "waiting" || item.phase === "updating"), false);
+  assert.equal(result.plannedUpdates.length, 1);
+  assert.equal(result.plannedUpdates[0].device.id, "device-1");
+  assert.equal(result.summary.plannedUpdates, 1);
+  assert.equal(result.summary.checked, 2);
+  assert.equal(result.summary.eligible, 1);
+  assert.equal(result.summary.skipped, 1);
 });

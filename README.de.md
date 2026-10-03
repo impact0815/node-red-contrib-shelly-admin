@@ -21,7 +21,27 @@ Node-RED-Nodes zur lokalen Shelly-Flottenverwaltung: Discovery, persistentes Inv
 | `shelly-admin-monitor` | Abfrage, Historie, Observations und Temperatursicherheit | Gesundheit · Hinweise · Fehler |
 | `shelly-admin-maintenance` | Firmwareprüfung, Dry-run, rollierende Updates und konditionelle Neustarts | Ergebnis · Gerätefortschritt · Fehler |
 
-Version 0.2.0 erhält Node-Typen, dreifache Ausgangsverdrahtung, Node.js 18+/Node-RED 3.1+, Gen1–Gen4-Normalisierung, Context-Store-Persistenz, Stable als Firmwarestandard, explizite Beta-Freigabe, strukturierte Fehler und die Temperatursicherheitslogik.
+Version 0.3.0 erhält Node-Typen, dreifache Ausgangsverdrahtung, Node.js 18+/Node-RED 3.1+, Gen1–Gen4-Normalisierung, Context-Store-Persistenz, Stable als Firmwarestandard, explizite Beta-Freigabe, strukturierte Fehler und die Temperatursicherheitslogik. Neu ist die duale Bedienung: Jeder operative Befehl steht per `msg.action` und über Start-/Abbrechen-Schaltflächen im Editor-Dialog der deployten Node zur Verfügung.
+
+## Einheitliche Action- und Lifecycle-API
+
+| Node | Start-/Laufaktionen | Steueraktionen |
+|---|---|---|
+| Discovery | `start`, `scan`, `full`, `incremental` | `cancel`, `status` |
+| Monitor | `start`, `poll`, `check` | `cancel`, `status`, `enable`, `disable` |
+| Maintenance | `start`, `check`, `update`, `reboot` | `cancel`, `status` |
+
+Beispiel:
+
+```json
+{"action":"scan","mode":"full","targets":"192.168.10.0/24"}
+```
+
+Jeder aktive Lauf besitzt eine `runId`. Fortschritt und Abschluss melden `state`, `phase`, `processed`, `total`, `unprocessed`, Zeitstempel und ein eingebettetes `shelly-admin.lifecycle/1`-Objekt. Einheitliche Zustände: `started`, `running`, `cancel-requested`, `cancelled`, `completed`, `completed-with-issues`, `failed`. `status` arbeitet rein lesend. `cancel` ist idempotent und meldet `idle`, wenn nichts läuft.
+
+Der Abbruch wird durch Parallelisierung, HTTP-Requests, Firmwareprüfungen, Validierungsabfragen nach Neustarts und Staffelwartezeiten propagiert. Abgeschlossene Gerätearbeit bleibt erhalten und wird persistiert. Nicht gestartete Discovery-Ziele werden nicht als offline gewertet; ein abgebrochener Vollscan setzt keinen neuen Abschlusszeitpunkt. Bereits vom Gerät angenommene Firmwareupdates oder Neustarts lassen sich nicht zurückrollen; das Ergebnis enthält Gerät und Abbruchpunkt.
+
+Der vollständige Message-Vertrag je Node, Lifecycle-Datensätze, Output-Topics, Recovery-Beispiele, Firmwareabläufe und Abbruchsemantik stehen in [docs/MESSAGE-API.de.md](docs/MESSAGE-API.de.md) ([English](docs/MESSAGE-API.md)).
 
 ## Installation
 
@@ -29,14 +49,14 @@ Im Node-RED-Benutzerverzeichnis:
 
 ```bash
 cd ~/.node-red
-npm install @impact0815/node-red-contrib-shelly-admin@0.2.0
+npm install @impact0815/node-red-contrib-shelly-admin@0.3.0
 ```
 
 Aus dem bereitgestellten Paket:
 
 ```bash
 cd ~/.node-red
-npm install /pfad/zu/impact0815-node-red-contrib-shelly-admin-0.2.0.tgz
+npm install /pfad/zu/impact0815-node-red-contrib-shelly-admin-0.3.0.tgz
 ```
 
 Anschließend Node-RED neu starten und eine `shelly-admin-config`-Node sowie die benötigten Discovery-, Monitor- und Maintenance-Nodes hinzufügen.
@@ -50,6 +70,8 @@ Ziele akzeptieren CIDR-Netze, vollständige oder verkürzte IPv4-Bereiche, Einze
 - Nur Stable ist die Standard-Firmware-Richtlinie; Beta muss ausdrücklich erlaubt werden.
 - `firmwareCheckTimeoutMs` hat den Standard `2500`, akzeptiert `250–60000` und wird unverändert an die vollständige Prüfung und die Requests übergeben.
 - Fehler oder Timeout eines Geräts stoppen die verbleibenden lesenden Firmwareprüfungen nicht.
+- Ein Updatelauf arbeitet zweiphasig: zuerst werden alle ausgewählten Geräte geprüft; Update, Neustartwartezeit und Validierung laufen danach nur für policy-berechtigte Geräte. Unter Stable-only enden Beta-only- und Geräte ohne Update sofort als `skipped` mit `no-policy-eligible-update`.
+- Fortschritt trennt `checked`, `eligible`, `skipped`, `updated`, `failed` und `timeouts`. Nach der Planung bezieht sich `processed/total` nur auf echte Updatekandidaten. Ein Dry-run liefert `plannedUpdates` und führt weder Update noch Staffel-, Neustart- oder Validierungswartezeit aus.
 
 ## Lokale Persistenz und Migration
 
@@ -134,7 +156,7 @@ Temperaturtrends sind von statischer `warning`-, `critical`- und Hardware-Overte
 
 Die Neustartanalyse führt Uptime-Abfälle und eine begrenzte Historie. Firmwareupdates und angeforderte Wartungsneustarts setzen Erwartungsmarker. Wiederholte unerwartete Neustarts werden getrennt gemeldet; Unsicherheiten durch Counter-Reset, fehlende Uptime oder API-Änderung bleiben sichtbar.
 
-Die Ressourcenanalyse überspringt Geräte ohne Werte und verlangt dauerhafte RAM-/Dateisystemänderungen. Elektrische Beobachtungen sind konservativ: einzelne Leistungsnullwerte lösen nichts aus, Energiezählerabfälle müssen wiederholt auftreten, nichtnegative Zählerdifferenzen können eine Energieverbrauchsrate bilden. Nutzung, Reset, Datenlücke, Firmwareverhalten oder Geräteaustausch bleiben mögliche Erklärungen; ein Defekt wird nicht behauptet.
+Die Ressourcenanalyse überspringt Geräte ohne Werte und verlangt dauerhafte RAM-/Dateisystemänderungen. Elektrische Beobachtungen arbeiten bewusst konservativ und aktivitätsbezogen. Null- und Nahe-null-Leistungsphasen gelten als reguläre Betriebszustände – einzeln, lang, zyklisch, täglich/nachts oder häufig zwischen Aus und Last wechselnd. Aktive Last wird nur mit einer ausreichend gefüllten Active-State-Baseline verglichen; der erste Wechsel von historisch 0 W zu Last reicht nicht aus. Elektrische Auslösungen verlangen mehr Wiederholungen als allgemeine Trends. Stark korrelierte Befunde für `powerW` und `energyRateWhPerHour` werden zusammengeführt. Zählerabfälle müssen weiterhin wiederholt auftreten; jeder verbleibende Befund nennt Nutzung, Reset, Datenlücke, Firmware oder Austausch als mögliche Erklärung und behauptet keinen Defekt.
 
 ## Observation Schema 2
 
@@ -158,7 +180,34 @@ Der Monitor bietet:
 - **Nur Übergänge**;
 - **Aktueller Zustand und Übergänge** (Standard und kompatibles Verhalten für bestehende Flows).
 
-Die drei vorhandenen Ausgänge bleiben Gesundheit, Hinweise und Fehler. Der Hinweis-Payload enthält Modus und strukturierte Observations. Der Node-Status zeigt Online-/Offline-, Warning-, Critical-, Anomalie-, Firmware- und Warm-up-Zahlen.
+Der normale Bearbeitungsdialog der Monitor-Node enthält jetzt vier sichtbare, per Tastatur fokussierbare Ansichten:
+
+- **Einstellungen** – alle bisherigen Monitorparameter sowie Start-/Abbrechen-Schaltflächen;
+- **Aktuelle Befunde** – die zuletzt bekannten Runtime-Befunde, gruppiert als Firmware, Temperatur, Offline/Recovery, Trends, Ressourcen und elektrische Beobachtungen;
+- **Historie** – die letzten 50 menschenlesbaren Befundzustände und Übergänge, neueste zuerst, einschließlich `opened`, `updated`, `present`, `cleared` und Recovery, ohne den Rohzeitreihenbestand auszugeben;
+- **Gerätedetails** – Inventarauswahl sowie Identität, Modell, Generation, IP, Erreichbarkeit, Firmware, Temperatur, Latenz, Ressourcen, aktive Befunde, aufgelöste Fehler und verfügbare Median-/MAD-Baselines.
+
+Jede Ergebnisansicht lädt nur beim ersten Wechsel auf diesen Tab im aktuell geöffneten Dialog, nach erneutem Öffnen des Dialogs oder über die sichtbare Schaltfläche **Aktualisieren**. Es gibt kein periodisches Editor-Refresh; Tabwechsel setzen daher Leseposition und Auswahl nicht wiederholt zurück. Beim manuellen Aktualisieren bleiben Scrollposition und ausgewähltes Gerät nach Möglichkeit erhalten. Lade-, Fehler- und Leerzustände sind sichtbar. Jede Befundkarte zeigt Schweregrad, verständlichen Titel, Gerät/Modell, IP, Erklärung, aktuellen Wert, Baseline oder Firmware-Ziel, Lifecycle und Zeitpunkt. Kritisch, Warnung, Info und Behoben sind visuell getrennt. Fehlende Gerätemesswerte erscheinen als **Nicht verfügbar** und niemals als Nullwert.
+
+Die Editoransicht verwendet folgende nur lesende Admin-Routen:
+
+- `GET /shelly-admin/nodes/:id/findings`
+- `GET /shelly-admin/nodes/:id/history?limit=50` (serverseitig auf 1–200 begrenzt)
+- `GET /shelly-admin/nodes/:id/devices`
+
+Alle drei Routen verlangen die Node-RED-Berechtigung `shelly-admin.read`, deaktivieren Response-Caching und liefern ausschließlich freigegebene Betriebsfelder – niemals Zugangsdaten. Historie und aktuelle Befunde werden zusammen mit dem vorhandenen Context-Zustand persistiert; die menschenlesbare Historie bleibt auf 200 Einträge begrenzt.
+
+Der Bearbeitungsdialog der Wartungs-Node bietet entsprechend die Ansichten **Einstellungen**, **Aktueller Status**, **Geräteübersicht** und **Historie**. Die Geräteübersicht zeigt Gerätename/Modell, Geräte-ID, IP, Generation, Erreichbarkeit, aktuelle Firmware, Stable-/Beta-Verfügbarkeit gemäß Richtlinie, Updateberechtigung, Status/Zeitpunkt des letzten Firmwarechecks, Zeitpunkt/Ergebnis des letzten Updates, letztes erfolgreiches Update, letzten fehlgeschlagenen Versuch, Fehler/Zeitüberschreitungen, Recovery nach Update sowie aktive/abgeschlossene Läufe. Filter sind **Update verfügbar**, **Fehler**, **Offline**, **Erfolgreich aktualisiert** und **Übersprungen**. Fehlende Werte erscheinen als **Nicht verfügbar**. Dieselbe Regel für einmaliges Laden/manuelles Aktualisieren gilt; Filter, Geräteauswahl und Scrollposition bleiben nach Möglichkeit erhalten.
+
+Wartung verwendet zusätzlich folgende nur lesenden, nicht cachebaren und durch `shelly-admin.read` geschützten Routen:
+
+- `GET /shelly-admin/nodes/:id/maintenance/status`
+- `GET /shelly-admin/nodes/:id/maintenance/devices`
+- `GET /shelly-admin/nodes/:id/maintenance/history?limit=50` (serverseitig auf 1–200 begrenzt)
+
+Abgeschlossene Wartungszusammenfassungen und ihre freigegebenen Geräteergebnisse werden additiv als begrenzte Historie (100 Läufe) persistiert. Zugangsdaten und beliebige private Geräte-Payloads werden nicht aufgenommen.
+
+Die drei vorhandenen Ausgänge bleiben Gesundheit, Hinweise und Fehler. Bestehende Observation-Schema-2-Objekte bleiben unverändert. Health- und Hinweis-Payload ergänzen `summaryText`, `summaryTextDe`, `humanSummary`, `findingsSummary` und gruppierte `cards`. Die kanonischen Gruppen heißen `firmware`, `temperature`, `recovery`, `trends`, `resources` und `electrical`; das bisherige Aggregat `cards.anomalies` bleibt als Kompatibilitätsalias erhalten. Der Node-Status zählt policy-berechtigte Firmwareupdates, Temperaturwarnungen, Offline-Geräte, handlungsrelevante Anomalien und Critical-Zustände. Reine Beta-Informationen unter Stable-only bleiben Info und werden nicht als Warnung gezählt; reguläre Nullleistungsphasen und normale Lastwechsel werden nicht zu elektrischen Problemfällen.
 
 ## Temperatursicherheit
 
@@ -188,6 +237,29 @@ Standardwerte: 70 °C Warning, 85 °C Critical, 5 °C Hysterese, drei aufeinande
 
 Nur bekannte Schaltausgänge werden adressiert. Automatisches Wiedereinschalten findet nie statt.
 
+## Menschengerechte Überwachungsoberfläche
+ 
+Die Überwachungsnode enthält zusätzliche Editoransichten:
+ 
+- Aktuelle Befunde
+- Historie
+- Gerätedetails
+ 
+Dadurch können Firmwarehinweise, Warnungen, Recovery-Ereignisse und Trends direkt im Node-RED-Editor betrachtet werden, ohne die JSON-Ausgaben analysieren zu müssen.
+ 
+![Aktuelle Befunde](docs/images/current-findings.png)
+
+## Vollständige importierbare Beispiele
+
+Eine JSON-Datei aus `examples/` importieren; die Nodes müssen nicht manuell zusammengesetzt werden:
+
+- `01-discovery-monitor.json` – kompakter Discovery-/Monitor-Einstieg;
+- `02-safe-maintenance.json` – kompakter Wartungseinstieg;
+- `03-complete-operations-en.json` – vollständiger englischer Flow für Bedienung, Abbruch, Dashboard, Benachrichtigungen, Debugging, Firmware, Recovery, Temperatur, Anomalien und Trends;
+- `04-kompletter-betrieb-de.json` – funktional gleichwertiger deutscher Flow.
+
+Die vollständigen Flows verwenden nur diese Shelly-Admin-Nodes und Node-RED-Core-Nodes. Das Browser-Dashboard liegt unter `/shelly-admin-dashboard-en` beziehungsweise `/shelly-admin-dashboard-de` und aktualisiert sich alle 15 Sekunden. Das Benachrichtigungsrouting schreibt Übergangswarnungen in Runtime-Log und Debug-Seitenleiste und kann leicht um freigegebene E-Mail-, Teams-, MQTT- oder Webhook-Nodes ergänzt werden. Ein echtes Firmwareupdate ist doppelt durch ein explizites Flow-Context-Flag und eine exakte Platzhalter-Geräte-ID gesperrt; lesende Prüfung und Dry-run funktionieren unmittelbar nach Prüfung der Ziel-/Config-Werte. Siehe [examples/README.de.md](examples/README.de.md).
+
 ## Entwicklung und Prüfung
 
 ```bash
@@ -198,4 +270,4 @@ npm run test:coverage
 npm pack --dry-run
 ```
 
-Release-, npm-, Node-RED-, Docker-, Prüfsummen- und Git-Befehle stehen in [RELEASE.md](RELEASE.md). Änderungen stehen in [CHANGELOG.md](CHANGELOG.md) und [RELEASE-NOTES-0.2.0.md](RELEASE-NOTES-0.2.0.md).
+Release-, npm-, Node-RED-, Docker-, Prüfsummen- und Git-Befehle stehen in [RELEASE.md](RELEASE.md). Änderungen stehen in [CHANGELOG.md](CHANGELOG.md) und [RELEASE-NOTES-0.3.0.md](RELEASE-NOTES-0.3.0.md).

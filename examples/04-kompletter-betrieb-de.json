@@ -1,0 +1,891 @@
+[
+  {
+    "id": "tab-shelly-admin-03-de",
+    "type": "tab",
+    "label": "Shelly Admin 0.3.0 – Vollständiger Betrieb",
+    "disabled": false,
+    "info": "Direkt importierbarer Referenz-Flow. Zielnetz vor dem Deploy anpassen. Nutzung auf eigene Gefahr."
+  },
+  {
+    "id": "cfg-shelly-admin-03-de",
+    "type": "shelly-admin-config",
+    "name": "Lokale Shelly-Flotte",
+    "targets": "192.168.1.0/24",
+    "autoSubnets": false,
+    "minimumAutoPrefix": 24,
+    "maxAddresses": 4096,
+    "discoveryConcurrency": 32,
+    "monitorConcurrency": 16,
+    "timeoutMs": 2500,
+    "fullScanIntervalHours": 168,
+    "contextStore": "file",
+    "rawRetentionHours": 48,
+    "aggregateRetentionDays": 90,
+    "bucketMinutes": 60,
+    "anomalyMinSamples": 24,
+    "anomalyWarmupSamples": 12,
+    "anomalyTriggerConsecutive": 3,
+    "anomalyClearConsecutive": 3,
+    "anomalyCooldownMinutes": 120,
+    "temperatureWarningC": 70,
+    "temperatureCriticalC": 85,
+    "temperatureHysteresisC": 5,
+    "temperatureConsecutive": 3,
+    "temperatureCooldownMinutes": 15,
+    "policies": "[]",
+    "firmwarePolicy": "stable",
+    "maintenanceDeviceTimeoutSeconds": 15,
+    "maintenanceRunTimeoutSeconds": 900,
+    "firmwareCheckTimeoutMs": 2500,
+    "maxRawSamplesPerDevice": 10000,
+    "maxBucketsPerDevice": 10000,
+    "maxBytesPerDevice": 1048576,
+    "anomalyProfile": "Conservative",
+    "baselineWindowDays": 30,
+    "peerMinDevices": 3,
+    "peerFirmwareMajor": true,
+    "restartWindowHours": 24,
+    "restartThreshold": 3,
+    "enableRecovery": true,
+    "enableLatencyTrend": true,
+    "enableTemperatureTrend": true,
+    "enableRestartPattern": true,
+    "enableResources": true,
+    "enableElectrical": true,
+    "enablePeerComparison": true
+  },
+  {
+    "id": "comment-guide-de",
+    "type": "comment",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Anleitung / Sicherheit",
+    "info": "SCHNELLSTART\n1. In der Config-Node nur autorisierte Zielnetze und einen localfilesystem-Context-Store wählen.\n2. Deployen. Discovery/Monitor über Inject-Nodes oder die Editor-Schaltflächen starten/abbrechen.\n3. Dashboard: http://<node-red-host>:1880/shelly-admin-dashboard-de\n4. Firmwareprüfung ist lesend. Update Dry-run verändert nichts.\n5. Echter Update-Pfad bleibt auf die Platzhalter-Geräte-ID begrenzt und muss zusätzlich explizit entsperrt werden.\nLifecycle: started/running/cancel-requested/cancelled/completed/completed-with-issues/failed.\nMonitor-Editor: Einstellungen, Aktuelle Befunde, Historie und Gerätedetails sind echte anklickbare Ansichten. Jede Nur-Lese-Ergebnisansicht lädt beim ersten Tabwechsel und danach nur über ihre sichtbare Aktualisieren-Schaltfläche; es gibt kein periodisches Editor-Refresh. Berechtigungsgeschützte Admin-Endpunkte zeigen Lade-, Fehler- und Leerzustände. Strukturierte Monitor-Outputs enthalten summaryText, summaryTextDe, humanSummary, findingsSummary und Kategorienkarten. Firmwareupdates prüfen zuerst alle ausgewählten Geräte und planen/aktualisieren danach nur policy-berechtigte Geräte; der Dry-run liefert plannedUpdates ohne Staffel- oder Validierungswartezeit.\nWartungs-Editor: Einstellungen, Aktueller Status, Geräteübersicht und Historie sind anklickbare Ansichten. Die Geräteübersicht zeigt policy-bezogene Firmwareberechtigung, Prüf-/Updateergebnisse, Fehler/Zeitüberschreitungen und Recovery mit Filtern für Update verfügbar, Fehler, Offline, Erfolgreich aktualisiert und Übersprungen.",
+    "x": 180,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "id": "discovery-de",
+    "type": "shelly-admin-discovery",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Discovery + Lifecycle",
+    "admin": "cfg-shelly-admin-03-de",
+    "mode": "incremental",
+    "scanOnStart": false,
+    "startDelaySeconds": 2,
+    "x": 460,
+    "y": 140,
+    "wires": [
+      [
+        "fn-inventory-de",
+        "debug-inventory-de"
+      ],
+      [
+        "debug-discovery-events-de"
+      ],
+      [
+        "debug-errors-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-full-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Vollscan starten",
+    "props": [
+      {
+        "p": "action",
+        "v": "scan",
+        "vt": "str"
+      },
+      {
+        "p": "mode",
+        "v": "full",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 100,
+    "wires": [
+      [
+        "discovery-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-cancel-discovery-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Discovery abbrechen",
+    "props": [
+      {
+        "p": "action",
+        "v": "cancel",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 160,
+    "y": 140,
+    "wires": [
+      [
+        "discovery-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-status-discovery-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Discovery-Status",
+    "props": [
+      {
+        "p": "action",
+        "v": "status",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 180,
+    "wires": [
+      [
+        "discovery-de"
+      ]
+    ]
+  },
+  {
+    "id": "fn-inventory-de",
+    "type": "function",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Inventar für Dashboard speichern",
+    "func": "flow.set(\"shellyAdminInventory\", msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 760,
+    "y": 100,
+    "wires": [
+      [
+        "debug-inventory-de"
+      ]
+    ]
+  },
+  {
+    "id": "debug-inventory-de",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Inventar / Health Debug",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1030,
+    "y": 100,
+    "wires": []
+  },
+  {
+    "id": "debug-discovery-events-de",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Discovery-, Change- und Fortschrittsereignisse",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 840,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "debug-errors-de",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Alle strukturierten Fehler",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1040,
+    "y": 640,
+    "wires": []
+  },
+  {
+    "id": "monitor-de",
+    "type": "shelly-admin-monitor",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Monitor: Befunde, Hinweise, Recovery, Trends",
+    "admin": "cfg-shelly-admin-03-de",
+    "periodic": true,
+    "intervalSeconds": 60,
+    "automationMode": "notify",
+    "firmwarePolicy": "",
+    "outputMode": "current-and-transitions",
+    "x": 500,
+    "y": 300,
+    "wires": [
+      [
+        "fn-health-de",
+        "debug-inventory-de"
+      ],
+      [
+        "fn-route-alerts-de"
+      ],
+      [
+        "debug-errors-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-monitor-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Monitor jetzt starten",
+    "props": [
+      {
+        "p": "action",
+        "v": "start",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 260,
+    "wires": [
+      [
+        "monitor-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-monitor-cancel-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Monitor abbrechen",
+    "props": [
+      {
+        "p": "action",
+        "v": "cancel",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 300,
+    "wires": [
+      [
+        "monitor-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-monitor-status-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Monitor-Status",
+    "props": [
+      {
+        "p": "action",
+        "v": "status",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 340,
+    "wires": [
+      [
+        "monitor-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-monitor-enable-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Intervall aktivieren",
+    "props": [
+      {
+        "p": "action",
+        "v": "enable",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 380,
+    "wires": [
+      [
+        "monitor-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-monitor-disable-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Intervall deaktivieren",
+    "props": [
+      {
+        "p": "action",
+        "v": "disable",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 420,
+    "wires": [
+      [
+        "monitor-de"
+      ]
+    ]
+  },
+  {
+    "id": "fn-health-de",
+    "type": "function",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Health/Historie + kompakte Befunde",
+    "func": "flow.set(\"shellyAdminHealth\", msg.payload);\nflow.set(\"shellyAdminFindings\", {summaryText: msg.payload.summaryText, summaryTextDe: msg.payload.summaryTextDe, humanSummary: msg.payload.humanSummary, findingsSummary: msg.payload.findingsSummary, cards: msg.payload.cards});\nconst compact = RED.util.cloneMessage(msg);\ncompact.topic = \"shelly-admin/befundzusammenfassung\";\ncompact.payload = {summaryText: msg.payload.summaryText, summaryTextDe: msg.payload.summaryTextDe, humanSummary: msg.payload.humanSummary, findingsSummary: msg.payload.findingsSummary, cards: msg.payload.cards};\nreturn [msg, compact];",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 800,
+    "y": 260,
+    "wires": [
+      [],
+      [
+        "debug-findings-de"
+      ]
+    ]
+  },
+  {
+    "id": "fn-route-alerts-de",
+    "type": "function",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Alert-, Recovery-, Temperatur-, Firmware-, Anomalie-/Trend-Router",
+    "func": "const buckets = [[], [], [], []];\nconst observations = Array.isArray(msg.payload && msg.payload.observations) ? msg.payload.observations : [];\nfor (const observation of observations) {\n    const copy = RED.util.cloneMessage(msg);\n    copy.payload = observation;\n    copy.topic = \"shelly-admin/observation/\" + observation.kind;\n    if (observation.category === \"recovery\" || observation.lifecycle === \"cleared\") buckets[1].push(copy);\n    if (observation.kind === \"temperature\") buckets[2].push(copy);\n    if ([\"latency-trend\", \"temperature-trend\", \"restart-pattern\", \"resource-trend\", \"electrical-observation\", \"latency-network-factor\"].includes(observation.kind)) buckets[3].push(copy);\n    if ([\"warning\", \"critical\"].includes(observation.severity) && [\"opened\", \"updated\"].includes(observation.lifecycle)) buckets[0].push(copy);\n}\nflow.set(\"shellyAdminAlerts\", msg.payload);\nflow.set(\"shellyAdminFindings\", {summaryText: msg.payload.summaryText, summaryTextDe: msg.payload.summaryTextDe, humanSummary: msg.payload.humanSummary, findingsSummary: msg.payload.findingsSummary, cards: msg.payload.cards});\nreturn buckets.map((items) => items.length ? items : null);",
+    "outputs": 4,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 840,
+    "y": 340,
+    "wires": [
+      [
+        "fn-notify-de"
+      ],
+      [
+        "debug-recovery-de"
+      ],
+      [
+        "debug-temperature-de"
+      ],
+      [
+        "debug-trends-de"
+      ]
+    ]
+  },
+  {
+    "id": "fn-notify-de",
+    "type": "function",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Benachrichtigung (Sidebar + Runtime-Warnung)",
+    "func": "const d = msg.payload.device || {};\nnode.warn(`${msg.payload.severity}: ${msg.payload.kind} ${d.id || d.ip || \"device\"}`);\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1170,
+    "y": 300,
+    "wires": [
+      [
+        "debug-notify-de"
+      ]
+    ]
+  },
+  {
+    "id": "debug-notify-de",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Benachrichtigungen",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1440,
+    "y": 300,
+    "wires": []
+  },
+  {
+    "id": "debug-recovery-de",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Recovery-/Lifecycle-Events",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1200,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "id": "debug-temperature-de",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Temperaturwarnungen",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1180,
+    "y": 380,
+    "wires": []
+  },
+  {
+    "id": "debug-trends-de",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Anomalien, Trends, Historie",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1190,
+    "y": 420,
+    "wires": []
+  },
+  {
+    "id": "maint-de",
+    "type": "shelly-admin-maintenance",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Zweiphasige Firmwareprüfung/-aktualisierung",
+    "admin": "cfg-shelly-admin-03-de",
+    "action": "check",
+    "deviceSelectors": "",
+    "allowAll": true,
+    "dryRun": true,
+    "firmwarePolicy": "stable",
+    "deviceTimeoutSeconds": 15,
+    "runTimeoutSeconds": 900,
+    "staggerSeconds": 30,
+    "waitBeforeValidationSeconds": 5,
+    "validationTimeoutSeconds": 180,
+    "conditionType": "always",
+    "conditionValue": "",
+    "failFast": false,
+    "scheduleHours": 0,
+    "scheduleMode": "notify",
+    "automaticUpdates": false,
+    "x": 470,
+    "y": 560,
+    "wires": [
+      [
+        "fn-maint-result-de"
+      ],
+      [
+        "debug-maint-progress-de"
+      ],
+      [
+        "debug-errors-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-fw-check-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Firmware prüfen",
+    "props": [
+      {
+        "p": "action",
+        "v": "check",
+        "vt": "str"
+      },
+      {
+        "p": "allowAll",
+        "v": "true",
+        "vt": "bool"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 500,
+    "wires": [
+      [
+        "maint-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-fw-dry-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Update-Probelauf",
+    "props": [
+      {
+        "p": "action",
+        "v": "update",
+        "vt": "str"
+      },
+      {
+        "p": "allowAll",
+        "v": "true",
+        "vt": "bool"
+      },
+      {
+        "p": "dryRun",
+        "v": "true",
+        "vt": "bool"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 540,
+    "wires": [
+      [
+        "maint-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-maint-cancel-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Wartung abbrechen",
+    "props": [
+      {
+        "p": "action",
+        "v": "cancel",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 580,
+    "wires": [
+      [
+        "maint-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-reboot-dry-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Neustart-Probelauf",
+    "props": [
+      {
+        "p": "action",
+        "v": "reboot",
+        "vt": "str"
+      },
+      {
+        "p": "allowAll",
+        "v": "true",
+        "vt": "bool"
+      },
+      {
+        "p": "dryRun",
+        "v": "true",
+        "vt": "bool"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 620,
+    "wires": [
+      [
+        "maint-de"
+      ]
+    ]
+  },
+  {
+    "id": "inject-real-update-de",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-de",
+    "name": "ECHTES Update (gesicherter Pilot)",
+    "props": [
+      {
+        "p": "action",
+        "v": "update",
+        "vt": "str"
+      },
+      {
+        "p": "devices",
+        "v": "REPLACE-WITH-EXACT-DEVICE-ID",
+        "vt": "str"
+      },
+      {
+        "p": "dryRun",
+        "v": "false",
+        "vt": "bool"
+      },
+      {
+        "p": "confirm",
+        "v": "true",
+        "vt": "bool"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 170,
+    "y": 660,
+    "wires": [
+      [
+        "fn-update-gate-de"
+      ]
+    ]
+  },
+  {
+    "id": "fn-update-gate-de",
+    "type": "function",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Explizite Freigabe erforderlich",
+    "func": "if (flow.get(\"shellyAdminArmRealUpdate\") !== true) {\n    node.warn(\"ECHTES Firmwareupdate blockiert: flow.shellyAdminArmRealUpdate ist nicht true.\");\n    return null;\n}\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 470,
+    "y": 660,
+    "wires": [
+      [
+        "maint-de"
+      ]
+    ]
+  },
+  {
+    "id": "fn-maint-result-de",
+    "type": "function",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Wartungsergebnis / Firmware-Workflow",
+    "func": "flow.set(\"shellyAdminMaintenance\", msg.payload);\nmsg.findingsSummary = msg.payload.summaryText;\nmsg.plannedUpdates = msg.payload.plannedUpdates || [];\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 790,
+    "y": 540,
+    "wires": [
+      [
+        "debug-maint-result-de"
+      ]
+    ]
+  },
+  {
+    "id": "debug-maint-result-de",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Firmware-/Wartungsergebnis",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1070,
+    "y": 540,
+    "wires": []
+  },
+  {
+    "id": "debug-maint-progress-de",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Fortschritt + Abbruchzustand",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 800,
+    "y": 600,
+    "wires": []
+  },
+  {
+    "id": "comment-update-de",
+    "type": "comment",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Echte Updates bleiben standardmäßig gesperrt",
+    "info": "Für ein beaufsichtigtes Pilotupdate zuerst im Context flow.shellyAdminArmRealUpdate=true setzen und die Platzhalter-ID durch genau ein geprüftes Gerät ersetzen. Stable bleibt Standard. Ein vom Gerät angenommenes Update kann nicht zurückgerollt werden.",
+    "x": 510,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "id": "http-dashboard-de",
+    "type": "http in",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Shelly Admin Dashboard",
+    "url": "/shelly-admin-dashboard-de",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 180,
+    "y": 780,
+    "wires": [
+      [
+        "fn-dashboard-de"
+      ]
+    ]
+  },
+  {
+    "id": "fn-dashboard-de",
+    "type": "function",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Dashboard HTML",
+    "func": "function esc(value) { return String(value).replace(/[&<>\"']/g, (c) => ({\"&\":\"&amp;\",\"<\":\"&lt;\",\">\":\"&gt;\",\"\\\"\":\"&quot;\",\"'\":\"&#39;\"}[c])); }\nconst data = {\n  inventory: flow.get(\"shellyAdminInventory\") || null,\n  health: flow.get(\"shellyAdminHealth\") || null,\n  findings: flow.get(\"shellyAdminFindings\") || null,\n  alerts: flow.get(\"shellyAdminAlerts\") || null,\n  maintenance: flow.get(\"shellyAdminMaintenance\") || null\n};\nmsg.headers = {\"content-type\":\"text/html; charset=utf-8\",\"cache-control\":\"no-store\"};\nmsg.payload = `<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"refresh\" content=\"15\"><title>Shelly Admin</title><style>body{font:14px system-ui;margin:2rem;background:#111;color:#eee}section{background:#222;padding:1rem;margin:1rem 0;border-radius:.5rem}pre{white-space:pre-wrap;overflow-wrap:anywhere}.ok{color:#7ee787}</style></head><body><h1>Shelly Admin 0.3.0</h1><p class=\"ok\">Refresh: 15 s</p>${Object.entries(data).map(([k,v])=>`<section><h2>${esc(k)}</h2><pre>${esc(JSON.stringify(v,null,2))}</pre></section>`).join(\"\")}</body></html>`;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 470,
+    "y": 780,
+    "wires": [
+      [
+        "http-response-de"
+      ]
+    ]
+  },
+  {
+    "id": "http-response-de",
+    "type": "http response",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Dashboard response",
+    "statusCode": "",
+    "headers": {},
+    "x": 760,
+    "y": 780,
+    "wires": []
+  },
+  {
+    "id": "comment-dashboard-de",
+    "type": "comment",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Dashboard ohne Zusatzmodule: /shelly-admin-dashboard-de",
+    "info": "Der HTTP-Endpunkt nutzt nur Node-RED-Core-Nodes, zeigt kompakte Befunde, Inventar, Health/Historie, Alerts und Wartung und aktualisiert sich alle 15 Sekunden. Die deployte Monitor-Node bietet zusätzlich die geschützten Ansichten Einstellungen, Aktuelle Befunde, Historie und Gerätedetails. Die deployte Wartungs-Node bietet zusätzlich die geschützten Ansichten Einstellungen, Aktueller Status, Geräteübersicht und Historie; Editor-Tabs aktualisieren sich nie automatisch.",
+    "x": 500,
+    "y": 820,
+    "wires": []
+  },
+  {
+    "id": "debug-findings-de",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-de",
+    "name": "Kompakte Befundzusammenfassung",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1080,
+    "y": 260,
+    "wires": []
+  }
+]

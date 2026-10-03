@@ -44,6 +44,9 @@ test("a monitor cycle is not empty when device polling reports firmware availabi
   const result = await runtime.monitor({ automationMode: "notify" });
   assert.equal(result.summary.firmwareUpdates, 1);
   assert.ok(result.observations.some((item) => item.kind === "firmware-update"));
+  assert.equal(result.findingsSummary.firmwareUpdates, 1);
+  assert.equal(result.cards.firmware.length, 1);
+  assert.match(result.summaryText, /1 policy-eligible firmware update/);
 });
 
 test("monitor preserves retryable ETIMEDOUT details and adds an offline observation", async () => {

@@ -9,6 +9,19 @@
       }
       return fallback;
     }
+    function postAction(node, request) {
+      $.ajax({
+        url: "shelly-admin/nodes/" + encodeURIComponent(node.id) + "/action",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify(request)
+      }).done(function (result) {
+        RED.notify(result.accepted === false ? "No active run" : "Shelly discovery: " + request.action, result.accepted === false ? "warning" : "success");
+      }).fail(function (xhr) {
+        var body = xhr.responseJSON || {};
+        RED.notify(body.error && body.error.message || "Deploy the node before using editor controls.", "error");
+      });
+    }
     RED.nodes.registerType("shelly-admin-discovery", {
       category: "network",
       color: "#E5A93D",
@@ -24,7 +37,12 @@
       icon: "font-awesome/fa-search",
       outputLabels: function (index) { return text(this, ["shelly-admin-discovery.output.inventory", "shelly-admin-discovery.output.events", "shelly-admin-discovery.output.errors"][index], ["Inventory", "Events", "Errors"][index]); },
       label: function () { return this.name || text(this, "shelly-admin-discovery.label.default", "Shelly discovery"); },
-      paletteLabel: function () { return text(this, "shelly-admin-discovery.label.palette", "Shelly discovery"); }
+      paletteLabel: function () { return text(this, "shelly-admin-discovery.label.palette", "Shelly discovery"); },
+      oneditprepare: function () {
+        var node = this;
+        $("#node-input-manual-start").on("click", function () { postAction(node, { action: "scan", mode: $("#node-input-mode").val() }); });
+        $("#node-input-manual-cancel").on("click", function () { postAction(node, { action: "cancel", reason: "editor-button" }); });
+      }
     });
   }());
 </script>
@@ -34,10 +52,13 @@
   <div class="form-row"><label for="node-input-mode"><span data-i18n="shelly-admin-discovery.label.mode"></span></label><select id="node-input-mode"><option value="incremental" data-i18n="shelly-admin-discovery.option.incremental"></option><option value="full" data-i18n="shelly-admin-discovery.option.full"></option></select></div>
   <div class="form-row"><label for="node-input-scanOnStart"><span data-i18n="shelly-admin-discovery.label.scanOnStart"></span></label><input type="checkbox" id="node-input-scanOnStart" style="width:auto"></div>
   <div class="form-row"><label for="node-input-startDelaySeconds"><span data-i18n="shelly-admin-discovery.label.startDelaySeconds"></span></label><input type="number" id="node-input-startDelaySeconds" min="0"></div>
+  <div class="form-row"><label><i class="fa fa-play-circle"></i> <span data-i18n="shelly-admin-discovery.label.manualControl"></span></label><button type="button" id="node-input-manual-start" class="red-ui-button"><i class="fa fa-play"></i> <span data-i18n="shelly-admin-discovery.button.start"></span></button> <button type="button" id="node-input-manual-cancel" class="red-ui-button"><i class="fa fa-stop"></i> <span data-i18n="shelly-admin-discovery.button.cancel"></span></button></div>
+  <div class="form-tips"><span data-i18n="shelly-admin-discovery.tip.deployControls"></span></div>
 </script>
 <script type="text/html" data-help-name="shelly-admin-discovery">
   <p>Discovers Shelly Gen1 and Gen2+ devices and maintains the shared inventory. With an existing inventory, an initial scan validates known devices first; periodic full scans find additions.</p>
-  <p><code>msg.mode</code> may be <code>incremental</code>, <code>full</code>, or <code>initial</code>. <code>msg.targets</code> can temporarily provide individual IPs, ranges, CIDRs, or multiple entries.</p>
+  <p><code>msg.action</code>: <code>start</code>/<code>scan</code>, <code>full</code>, <code>incremental</code>, <code>cancel</code>, or <code>status</code>. <code>msg.mode</code> may be <code>incremental</code>, <code>full</code>, or <code>initial</code>. <code>msg.targets</code> can temporarily provide individual IPs, ranges, CIDRs, or multiple entries.</p>
+  <p>The editor Start and Cancel buttons call the same deployed-node action API. Progress and lifecycle messages are sent on output 2. A cancelled scan keeps completed probe results, does not finalize the full-scan timestamp, persists the consistent partial inventory, and reports <code>state:"cancelled"</code> with processed/total counts.</p>
   <p>Outputs: (1) complete structured inventory result, (2) discovery/change events, (3) errors. Ordinary closed ports are summarized instead of producing one error per scanned address.</p>
   <p><strong>⚠️ Use at your own risk – no warranty.</strong> Unofficial community project, not affiliated with Shelly or Allterco; provided “as is”. Network scans must be authorized for the target network.</p>
 </script>

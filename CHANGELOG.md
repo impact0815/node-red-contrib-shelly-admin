@@ -4,6 +4,39 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-03
+
+### Added
+
+- Unified `msg.action` contract for Discovery, Monitor and Maintenance with start/run, cancel and read-only status actions; Monitor also supports runtime enable/disable of periodic polling.
+- Start and Cancel controls in each deployed operational node's editor dialog, backed by an authenticated Node-RED admin endpoint.
+- Run IDs, common lifecycle schema, explicit started/running/cancel-requested/cancelled/completed/completed-with-issues/failed states, and discovery/monitor progress records.
+- Abort propagation through bounded discovery/monitor work, HTTP requests, firmware checks, post-restart validation and maintenance stagger waits.
+- Complete English/German Message API documentation, expanded Node-RED help and complete importable bilingual operation flows with notification routing and a core-node HTTP dashboard.
+- Regression tests for actions, editor controls/endpoints, progress, cancellation consistency, low-level abort behavior and example-flow integrity.
+- On-demand **Current Findings / Aktuelle Befunde** monitor-editor view through a `shelly-admin.read`-protected Admin endpoint, plus additive `summaryText`, `findingsSummary`, and grouped `cards` outputs.
+- Two-phase firmware update planning with explicit `checked`, `eligible`, `skipped`, `updated`, `failed`, and `timeouts` counters and compact `plannedUpdates` dry-run output.
+- Regression coverage for normal zero-power/off phases, cyclic load profiles, first load after a zero baseline, sustained active-load deviations, correlated electrical de-duplication, eligibility-only updates, no-wait skips, findings summaries, and protected editor loading.
+- Functional Monitor editor navigation with visible Settings, Current Findings, History and Device Details tabs; result views load once per open dialog and then only on explicit Refresh, with preserved scroll/device selection where possible and explicit loading, error and empty states.
+- `shelly-admin.read`-protected, no-store History and Device Details endpoints with bounded human-readable transitions, safe inventory fields, resolved errors and compact per-device baselines.
+- Separate Firmware, Temperature, Offline/Recovery, Trends, Resources and Electrical card groups, localized titles/explanations, Critical/Warning/Info/Cleared styling and additive `humanSummary` output metadata.
+- Browser-behavior regression tests that click every result tab, verify panel switching and endpoint calls, and exercise loading, error, empty and rendered-finding states in English plus localization contract checks for German.
+- Functional bilingual Maintenance editor navigation with Settings, Current Status, Device Overview and History; policy-aware per-device firmware/check/update/error/recovery fields, filters, bounded persisted run history and `shelly-admin.read`-protected no-store endpoints.
+- Regression coverage proving that Monitor and Maintenance tabs do not schedule periodic editor refresh, load only on first selection/reopen/manual Refresh, keep filters/selection/scroll where possible and render missing values as Not available/Nicht verfügbar.
+
+### Changed
+
+- Cancelled full scans retain completed probes without advancing the full-scan completion timestamp or treating unstarted targets as unreachable.
+- Cancelled monitor cycles retain completed device results but skip fleet anomaly evaluation on an incomplete sample.
+- Maintenance completion now also exposes the common lifecycle/state contract while retaining the 0.2.0 result and completion structures.
+- Firmware updates check all selected devices first and then run update/stagger/restart validation only for policy-eligible candidates; Stable-only beta/no-update devices finish immediately with `no-policy-eligible-update`.
+- Electrical baselines separate normal off samples from active-load history, require longer confirmation, and consolidate correlated `powerW`/`energyRateWhPerHour` findings.
+
+### Compatibility and safety
+
+- Existing node types, three-output wiring, state schema 2, Gen1–Gen4 support, history/baselines, recovery, anomaly categories, Stable/Beta policy and temperature safety behavior remain intact.
+- Real update/reboot retains exact-selection/allow-all, dry-run and confirmation gates. Device-side operations already accepted before cancellation are not claimed to be rolled back.
+
 ## [0.2.0] - 2026-10-02
 
 ### Added
@@ -123,7 +156,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - Complete English and German editor labels, runtime messages, help and README documentation.
 - Tests, ESLint configuration, examples and GitHub Actions for CI and npm publishing preparation.
 
-[Unreleased]: https://github.com/impact0815/node-red-contrib-shelly-admin/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/impact0815/node-red-contrib-shelly-admin/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/impact0815/node-red-contrib-shelly-admin/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/impact0815/node-red-contrib-shelly-admin/compare/v0.1.4.1...v0.2.0
 [0.1.4.1]: https://github.com/impact0815/node-red-contrib-shelly-admin/compare/v0.1.4...v0.1.4.1
 [0.1.4]: https://github.com/impact0815/node-red-contrib-shelly-admin/compare/v0.1.3...v0.1.4

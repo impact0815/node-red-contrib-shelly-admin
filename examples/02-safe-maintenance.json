@@ -4,7 +4,7 @@
     "type": "tab",
     "label": "Shelly admin - safe maintenance",
     "disabled": false,
-    "info": "Dry-run first. Select exact pilot devices. Supervise real updates and reboots."
+    "info": "Dry-run first. Select exact pilot devices. Supervise real updates and reboots. Open the deployed Maintenance node for Settings, Current Status, Device Overview and History. Use the visible Refresh buttons; there is no periodic editor refresh."
   },
   {
     "id": "cfg-shelly-admin-02",
@@ -173,7 +173,7 @@
     "type": "comment",
     "z": "tab-shelly-admin-02",
     "name": "Keep dry-run enabled until exact pilot IDs and conditions are verified",
-    "info": "Real input-triggered update/reboot also requires msg.confirm=true. Use at your own risk \u2013 no warranty.",
+    "info": "Real input-triggered update/reboot also requires msg.confirm=true. The maintenance Device Overview shows policy eligibility, checks, updates, errors/timeouts and recovery with filters. Missing data is shown as Not available. Use at your own risk – no warranty.",
     "x": 360,
     "y": 40,
     "wires": []

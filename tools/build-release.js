@@ -31,11 +31,12 @@ try {
   const releaseZip = path.join(dist, `${stem}-release.zip`);
   zipDirectory(path.dirname(releaseStage), "node-red-contrib-shelly-admin", releaseZip);
 
-  const artifacts = [tarball, projectZip, releaseZip];
+  const releaseNotes = path.join(dist, `RELEASE-NOTES-${pkg.version}.md`);
+  fs.copyFileSync(path.join(root, `RELEASE-NOTES-${pkg.version}.md`), releaseNotes);
+  const artifacts = [tarball, projectZip, releaseZip, releaseNotes];
   const sums = artifacts.map((file) => `${sha256(file)}  ${path.basename(file)}`).join("\n") + "\n";
   fs.writeFileSync(path.join(dist, `SHA256SUMS-${pkg.version}.txt`), sums);
-  fs.copyFileSync(path.join(root, `RELEASE-NOTES-${pkg.version}.md`), path.join(dist, `RELEASE-NOTES-${pkg.version}.md`));
-  console.log(`Created ${artifacts.length + 2} release files in ${dist}`);
+  console.log(`Created ${artifacts.length + 1} release files in ${dist}`);
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
 }

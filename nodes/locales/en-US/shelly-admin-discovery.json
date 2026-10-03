@@ -7,7 +7,8 @@
       "admin": "Administration",
       "mode": "Scan mode",
       "scanOnStart": "Scan on start",
-      "startDelaySeconds": "Start delay (s)"
+      "startDelaySeconds": "Start delay (s)",
+      "manualControl": "Manual control"
     },
     "option": {
       "incremental": "Incremental / validate",
@@ -22,11 +23,31 @@
       "scanning": "scanning",
       "ready": "{{count}} devices ({{online}} online)",
       "error": "scan error",
-      "cached": "cached: {{count}} devices ({{online}} online)"
+      "cached": "cached: {{count}} devices ({{online}} online)",
+      "progress": "{{processed}}/{{total}} · {{phase}}",
+      "cancelling": "cancelling scan",
+      "cancelled": "scan cancelled · {{processed}}/{{total}}",
+      "idle": "idle"
     },
     "error": {
       "noConfig": "A valid Shelly administration configuration is required.",
       "busy": "A discovery scan is already running."
+    },
+    "button": {
+      "start": "Start scan",
+      "cancel": "Cancel"
+    },
+    "tip": {
+      "deployControls": "Deploy first. These buttons control the deployed node and use the same action API as msg.action."
+    },
+    "phase": {
+      "starting": "starting",
+      "scanning": "scanning",
+      "cancelRequested": "cancellation requested",
+      "cancelled": "cancelled",
+      "completed": "completed",
+      "completedWithIssues": "completed with issues",
+      "failed": "failed"
     }
   }
 }

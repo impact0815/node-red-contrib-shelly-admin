@@ -9,7 +9,9 @@
       "intervalSeconds": "Interval (s)",
       "automationMode": "Automation mode",
       "firmwarePolicy": "Firmware policy",
-      "outputMode": "Observation output mode"
+      "outputMode": "Observation output mode",
+      "manualControl": "Manual control",
+      "currentFindings": "Current Findings"
     },
     "option": {
       "off": "Observe only",
@@ -28,7 +30,8 @@
       "errors": "errors"
     },
     "tip": {
-      "actions": "Action mode still requires an exact per-device autoShutdown policy. It never re-enables outputs."
+      "actions": "Action mode still requires an exact per-device autoShutdown policy. It never re-enables outputs.",
+      "deployControls": "Deploy first. These buttons control the deployed node and use the same action API as msg.action."
     },
     "status": {
       "polling": "polling",
@@ -36,13 +39,105 @@
       "error": "monitor error",
       "warning": "{{online}} online · {{offline}} offline · {{warnings}} warnings",
       "critical": "{{online}} online · {{offline}} offline · {{critical}} critical",
-      "readyDetailed": "{{online}} on · {{offline}} off · {{anomalies}} anomalies · {{firmware}} FW · {{warmup}} warm-up",
-      "warningDetailed": "{{online}} on · {{offline}} off · {{warnings}} warn · {{anomalies}} anomalies · {{firmware}} FW · {{warmup}} warm-up",
-      "criticalDetailed": "{{online}} on · {{offline}} off · {{critical}} critical · {{anomalies}} anomalies · {{firmware}} FW · {{warmup}} warm-up"
+      "readyDetailed": "FW updates: {{firmware}} · temperature warnings: {{temperature}} · offline: {{offline}} · actionable anomalies: {{anomalies}} · critical: {{critical}}",
+      "warningDetailed": "FW updates: {{firmware}} · temperature warnings: {{temperature}} · offline: {{offline}} · actionable anomalies: {{anomalies}} · critical: {{critical}}",
+      "criticalDetailed": "FW updates: {{firmware}} · temperature warnings: {{temperature}} · offline: {{offline}} · actionable anomalies: {{anomalies}} · critical: {{critical}}",
+      "progress": "{{processed}}/{{total}} · {{phase}}",
+      "cancelling": "cancelling poll",
+      "cancelled": "poll cancelled · {{processed}}/{{total}}",
+      "idle": "idle",
+      "enabled": "periodic enabled · {{seconds}} s",
+      "disabled": "periodic disabled"
     },
     "error": {
       "noConfig": "A valid Shelly administration configuration is required.",
       "busy": "A monitoring cycle is already running."
+    },
+    "button": {
+      "start": "Poll now",
+      "cancel": "Cancel",
+      "refreshFindings": "Refresh",
+      "refreshHistory": "Refresh",
+      "refreshDevices": "Refresh"
+    },
+    "phase": {
+      "starting": "starting",
+      "polling": "polling",
+      "analyzing": "analyzing",
+      "cancelRequested": "cancellation requested",
+      "cancelled": "cancelled",
+      "completed": "completed",
+      "completedWithIssues": "completed with issues",
+      "failed": "failed"
+    },
+    "findings": {
+      "firmware": "Firmware",
+      "temperature": "Temperature",
+      "recovery": "Recovery / offline",
+      "anomalies": "Anomalies",
+      "trends": "Trends",
+      "current": "Current",
+      "baseline": "Baseline / target",
+      "lifecycle": "Lifecycle",
+      "empty": "No current actionable findings.",
+      "loading": "Loading current findings…",
+      "loadError": "Deploy the monitor node to load current findings.",
+      "resources": "Resources",
+      "electrical": "Electrical observations",
+      "time": "Time",
+      "titleFallback": "Finding",
+      "fleet": "Fleet"
+    },
+    "tabs": {
+      "settings": "Settings",
+      "current": "Current Findings",
+      "history": "History",
+      "devices": "Device Details"
+    },
+    "common": {
+      "unavailable": "Not available"
+    },
+    "severity": {
+      "critical": "Critical",
+      "warning": "Warning",
+      "info": "Info",
+      "cleared": "Cleared"
+    },
+    "notify": {
+      "noRun": "No active run",
+      "deploy": "Deploy the node before using editor controls."
+    },
+    "history": {
+      "hint": "Latest 50 finding states and transitions; raw measurements are intentionally omitted.",
+      "empty": "No finding transitions have been recorded yet.",
+      "loading": "Loading finding history…",
+      "loadError": "Could not load finding history.",
+      "summary": "Showing the latest"
+    },
+    "devices": {
+      "select": "Device",
+      "empty": "No inventoried devices are available.",
+      "loading": "Loading device details…",
+      "loadError": "Could not load device details.",
+      "identity": "Identity",
+      "model": "Model",
+      "generation": "Generation",
+      "ip": "IP address",
+      "reachability": "Reachability",
+      "online": "Online",
+      "offline": "Offline",
+      "firmware": "Firmware",
+      "stable": "Stable target",
+      "temperature": "Temperature",
+      "latency": "Latency",
+      "ram": "Free RAM",
+      "filesystem": "Free filesystem",
+      "activeFindings": "Active findings",
+      "noActive": "No active findings.",
+      "baselines": "Available baselines",
+      "noBaselines": "No baseline is available yet.",
+      "resolvedErrors": "Resolved errors",
+      "noResolved": "No resolved errors are stored."
     }
   }
 }

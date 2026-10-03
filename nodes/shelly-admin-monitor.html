@@ -1,13 +1,232 @@
 <script type="text/javascript">
   (function () {
     function text(context, key, fallback) {
+      var translated;
       try {
-        if (context && typeof context._ === "function") return context._(key);
-        if (typeof RED._ === "function") return RED._(key);
+        if (context && typeof context._ === "function") translated = context._(key);
+        if ((!translated || translated === key) && typeof RED._ === "function") translated = RED._(key);
       } catch (_error) {
-        // Keep editor rendering safe when i18n is unavailable.
+        translated = null;
       }
-      return fallback;
+      return translated && translated !== key ? translated : fallback;
+    }
+    function german() {
+      return Boolean(RED.settings && /^de(?:-|$)/i.test(RED.settings.lang || ""));
+    }
+    function label(node, key, english, deutsch) {
+      return text(node, "shelly-admin-monitor." + key, german() ? deutsch : english);
+    }
+    function postAction(node, request) {
+      $.ajax({
+        url: "shelly-admin/nodes/" + encodeURIComponent(node.id) + "/action",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify(request)
+      }).done(function (result) {
+        RED.notify(result.accepted === false ? label(node, "notify.noRun", "No active run", "Kein aktiver Lauf") : "Shelly monitor: " + request.action, result.accepted === false ? "warning" : "success");
+      }).fail(function (xhr) {
+        var body = xhr.responseJSON || {};
+        RED.notify(body.error && body.error.message || label(node, "notify.deploy", "Deploy the node before using editor controls.", "Node vor der Editor-Bedienung deployen."), "error");
+      });
+    }
+    function viewState(selector) {
+      var host = $(selector);
+      return { scrollTop: typeof host.scrollTop === "function" ? host.scrollTop() : 0 };
+    }
+    function restoreViewState(selector, state) {
+      var host = $(selector);
+      if (state && typeof host.scrollTop === "function") host.scrollTop(state.scrollTop || 0);
+    }
+    function missing(node) {
+      return label(node, "common.unavailable", "Not available", "Nicht verfügbar");
+    }
+    function display(node, value, unit) {
+      if (value === null || value === undefined || value === "") return missing(node);
+      return String(value) + (unit ? " " + unit : "");
+    }
+    function valueText(node, card) {
+      if (!card.currentValue) return missing(node);
+      var unit = card.currentValue.unit;
+      return display(node, card.currentValue.value, unit && ["state", "firmware"].indexOf(unit) < 0 ? unit : "");
+    }
+    function baselineText(node, card) {
+      if (card.targetVersion) return card.targetVersion;
+      if (!card.baseline) return missing(node);
+      if (card.baseline.median !== undefined && card.baseline.median !== null) return "median " + card.baseline.median + (card.baseline.count ? " (n=" + card.baseline.count + ")" : "");
+      if (card.baseline.warningC !== undefined) return "warning " + card.baseline.warningC + " °C";
+      return card.baseline.method || missing(node);
+    }
+    function timestampText(node, value) {
+      if (!value) return missing(node);
+      var parsed = new Date(value);
+      return isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString();
+    }
+    function severity(node, card) {
+      if (card.lifecycle === "cleared" || card.severity === "cleared") return label(node, "severity.cleared", "Cleared", "Behoben");
+      if (card.severity === "critical") return label(node, "severity.critical", "Critical", "Kritisch");
+      if (card.severity === "warning") return label(node, "severity.warning", "Warning", "Warnung");
+      return label(node, "severity.info", "Info", "Info");
+    }
+    function renderCard(node, host, card, history) {
+      var state = card.lifecycle === "cleared" || card.severity === "cleared" ? "cleared" : card.severity || "info";
+      var box = $("<article>").addClass("shelly-finding-card shelly-severity-" + state).appendTo(host);
+      var heading = $("<div>").addClass("shelly-finding-heading").appendTo(box);
+      $("<span>").addClass("shelly-finding-badge").text(severity(node, card)).appendTo(heading);
+      $("<strong>").text((german() ? card.titleDe || card.title : card.title) || label(node, "findings.titleFallback", "Finding", "Befund")).appendTo(heading);
+      var device = card.device || {};
+      $("<div>").addClass("shelly-finding-device").text([
+        device.model || device.id || label(node, "findings.fleet", "Fleet", "Flotte"),
+        device.ip || missing(node)
+      ].join(" · ")).appendTo(box);
+      $("<p>").text(german() ? card.summaryDe || card.summary || "" : card.summary || "").appendTo(box);
+      var meta = $("<dl>").addClass("shelly-finding-meta").appendTo(box);
+      addDefinition(meta, label(node, "findings.current", "Current", "Aktuell"), valueText(node, card));
+      addDefinition(meta, label(node, "findings.baseline", "Baseline / target", "Baseline / Ziel"), baselineText(node, card));
+      addDefinition(meta, label(node, "findings.lifecycle", "Lifecycle", "Lifecycle"), history && card.event === "recovery" ? "Recovery" : display(node, card.lifecycle));
+      addDefinition(meta, label(node, "findings.time", "Time", "Zeitpunkt"), timestampText(node, card.timestamp));
+    }
+    function addDefinition(host, term, value) {
+      $("<dt>").text(term).appendTo(host);
+      $("<dd>").text(value).appendTo(host);
+    }
+    function setState(node, id, state, message) {
+      var host = $(id).empty().attr("data-state", state);
+      $("<div>").addClass("shelly-view-state shelly-view-state-" + state).text(message).appendTo(host);
+      return host;
+    }
+    function renderFindings(node, result) {
+      var host = $("#node-input-current-findings").empty().attr("data-state", result.actionableEmpty ? "empty" : "ready");
+      $("<div>").addClass("shelly-findings-summary").text(german() ? result.summaryTextDe || result.summaryText || "" : result.summaryText || "").appendTo(host);
+      if (result.actionableEmpty) {
+        $("<div>").addClass("shelly-view-state shelly-view-state-empty").text(label(node, "findings.empty", "No current actionable findings.", "Keine aktuellen handlungsrelevanten Befunde.")).appendTo(host);
+      }
+      var groups = [
+        ["firmware", label(node, "findings.firmware", "Firmware", "Firmware")],
+        ["temperature", label(node, "findings.temperature", "Temperature", "Temperatur")],
+        ["recovery", label(node, "findings.recovery", "Offline / Recovery", "Offline / Recovery")],
+        ["trends", label(node, "findings.trends", "Trends", "Trends")],
+        ["resources", label(node, "findings.resources", "Resources", "Ressourcen")],
+        ["electrical", label(node, "findings.electrical", "Electrical observations", "Elektrische Beobachtungen")]
+      ];
+      var shown = 0;
+      groups.forEach(function (group) {
+        var cards = result.cards && result.cards[group[0]] || [];
+        if (!cards.length) return;
+        shown += cards.length;
+        $("<h4>").text(group[1] + " (" + cards.length + ")").appendTo(host);
+        cards.forEach(function (card) { renderCard(node, host, card, false); });
+      });
+      if (!shown && !result.actionableEmpty) {
+        $("<div>").addClass("shelly-view-state shelly-view-state-empty").text(label(node, "findings.empty", "No current actionable findings.", "Keine aktuellen handlungsrelevanten Befunde.")).appendTo(host);
+      }
+    }
+    function renderHistory(node, result) {
+      var host = $("#node-input-finding-history").empty().attr("data-state", result.empty ? "empty" : "ready");
+      if (!result.entries || !result.entries.length) {
+        $("<div>").addClass("shelly-view-state shelly-view-state-empty").text(label(node, "history.empty", "No finding transitions have been recorded yet.", "Noch keine Befundübergänge aufgezeichnet.")).appendTo(host);
+        return;
+      }
+      $("<div>").addClass("shelly-findings-summary").text(label(node, "history.summary", "Showing the latest", "Angezeigt werden die letzten") + " " + result.entries.length + " / " + result.totalAvailable).appendTo(host);
+      result.entries.forEach(function (card) { renderCard(node, host, card, true); });
+    }
+    function addDeviceField(node, host, term, value, unit) {
+      addDefinition(host, term, display(node, value, unit));
+    }
+    function renderDeviceDetails(node, result) {
+      var host = $("#node-input-device-details").empty().attr("data-state", result.empty ? "empty" : "ready");
+      var select = $("#node-input-device-selector");
+      var selectedBefore = select.val();
+      select.empty();
+      (result.devices || []).forEach(function (device) {
+        var option = $("<option>").attr("value", device.id).text([device.name || device.model || device.id, device.ip || missing(node)].join(" · "));
+        option.appendTo(select);
+      });
+      var selectedId = selectedBefore && result.detailsById && result.detailsById[selectedBefore] ? selectedBefore : result.selectedDeviceId;
+      if (selectedId) select.val(selectedId);
+      var details = result.detailsById && selectedId ? result.detailsById[selectedId] : result.details;
+      if (!details) {
+        $("<div>").addClass("shelly-view-state shelly-view-state-empty").text(label(node, "devices.empty", "No inventoried devices are available.", "Keine inventarisierten Geräte verfügbar.")).appendTo(host);
+        return;
+      }
+      var identity = details.identity || {};
+      $("<h4>").text(identity.name || identity.id || missing(node)).appendTo(host);
+      var fields = $("<dl>").addClass("shelly-device-fields").appendTo(host);
+      addDeviceField(node, fields, label(node, "devices.identity", "Identity", "Identität"), identity.id);
+      addDeviceField(node, fields, label(node, "devices.model", "Model", "Modell"), details.model);
+      addDeviceField(node, fields, label(node, "devices.generation", "Generation", "Generation"), details.generation);
+      addDeviceField(node, fields, label(node, "devices.ip", "IP address", "IP-Adresse"), details.ip);
+      addDeviceField(node, fields, label(node, "devices.reachability", "Reachability", "Erreichbarkeit"), details.reachable === null || details.reachable === undefined ? null : details.reachable ? label(node, "devices.online", "Online", "Online") : label(node, "devices.offline", "Offline", "Offline"));
+      addDeviceField(node, fields, label(node, "devices.firmware", "Firmware", "Firmware"), details.firmware && details.firmware.current);
+      addDeviceField(node, fields, label(node, "devices.stable", "Stable target", "Stable-Zielversion"), details.firmware && details.firmware.stableAvailable);
+      addDeviceField(node, fields, label(node, "devices.temperature", "Temperature", "Temperatur"), details.temperatureC, details.temperatureC === null ? "" : "°C");
+      addDeviceField(node, fields, label(node, "devices.latency", "Latency", "Latenz"), details.latencyMs, details.latencyMs === null ? "" : "ms");
+      addDeviceField(node, fields, label(node, "devices.ram", "Free RAM", "Freier RAM"), details.resources && details.resources.ramFreePct, details.resources && details.resources.ramFreePct === null ? "" : "%");
+      addDeviceField(node, fields, label(node, "devices.filesystem", "Free filesystem", "Freies Dateisystem"), details.resources && details.resources.fsFreePct, details.resources && details.resources.fsFreePct === null ? "" : "%");
+      renderDeviceSection(node, host, label(node, "devices.activeFindings", "Active findings", "Aktive Befunde"), details.activeFindings || [], function (section, item) { renderCard(node, section, item, false); }, label(node, "devices.noActive", "No active findings.", "Keine aktiven Befunde."));
+      var baselines = Object.keys(details.baselines || {}).map(function (metric) { return { metric: metric, value: details.baselines[metric] }; });
+      renderDeviceSection(node, host, label(node, "devices.baselines", "Available baselines", "Verfügbare Baselines"), baselines, function (section, item) {
+        var row = $("<div>").addClass("shelly-baseline-row").appendTo(section);
+        $("<strong>").text(item.metric).appendTo(row);
+        $("<span>").text("median " + display(node, item.value.median) + " · MAD " + display(node, item.value.mad) + " · n=" + item.value.count).appendTo(row);
+      }, label(node, "devices.noBaselines", "No baseline is available yet.", "Noch keine Baseline verfügbar."));
+      renderDeviceSection(node, host, label(node, "devices.resolvedErrors", "Resolved errors", "Aufgelöste Fehler"), details.resolvedErrors || [], function (section, item) {
+        $("<div>").addClass("shelly-resolved-row").text([item.code || missing(node), timestampText(node, item.resolvedAt), item.resolution || missing(node)].join(" · ")).appendTo(section);
+      }, label(node, "devices.noResolved", "No resolved errors are stored.", "Keine aufgelösten Fehler gespeichert."));
+    }
+    function renderDeviceSection(node, host, heading, items, render, emptyText) {
+      $("<h4>").text(heading + " (" + items.length + ")").appendTo(host);
+      var section = $("<div>").addClass("shelly-device-section").appendTo(host);
+      if (!items.length) $("<div>").addClass("shelly-view-state shelly-view-state-empty").text(emptyText).appendTo(section);
+      else items.forEach(function (item) { render(section, item); });
+    }
+    function loadFindings(node, preserve) {
+      var state = preserve ? viewState("#node-input-current-findings") : null;
+      setState(node, "#node-input-current-findings", "loading", label(node, "findings.loading", "Loading current findings…", "Aktuelle Befunde werden geladen…"));
+      $.ajax({ url: "shelly-admin/nodes/" + encodeURIComponent(node.id) + "/findings", type: "GET", dataType: "json", cache: false })
+        .done(function (result) { renderFindings(node, result || {}); restoreViewState("#node-input-current-findings", state); })
+        .fail(function (xhr) {
+          var body = xhr.responseJSON || {};
+          setState(node, "#node-input-current-findings", "error", body.error && body.error.message || label(node, "findings.loadError", "Deploy the monitor node to load current findings.", "Monitor-Node deployen, um aktuelle Befunde zu laden."));
+        });
+    }
+    function loadHistory(node, preserve) {
+      var state = preserve ? viewState("#node-input-finding-history") : null;
+      setState(node, "#node-input-finding-history", "loading", label(node, "history.loading", "Loading finding history…", "Befundhistorie wird geladen…"));
+      $.ajax({ url: "shelly-admin/nodes/" + encodeURIComponent(node.id) + "/history?limit=50", type: "GET", dataType: "json", cache: false })
+        .done(function (result) { renderHistory(node, result || {}); restoreViewState("#node-input-finding-history", state); })
+        .fail(function (xhr) {
+          var body = xhr.responseJSON || {};
+          setState(node, "#node-input-finding-history", "error", body.error && body.error.message || label(node, "history.loadError", "Could not load finding history.", "Befundhistorie konnte nicht geladen werden."));
+        });
+    }
+    function loadDevices(node, preserve) {
+      var state = preserve ? viewState("#node-input-device-details") : null;
+      setState(node, "#node-input-device-details", "loading", label(node, "devices.loading", "Loading device details…", "Gerätedetails werden geladen…"));
+      $.ajax({ url: "shelly-admin/nodes/" + encodeURIComponent(node.id) + "/devices", type: "GET", dataType: "json", cache: false })
+        .done(function (result) {
+          node._shellyDeviceResult = result || {};
+          renderDeviceDetails(node, node._shellyDeviceResult);
+          restoreViewState("#node-input-device-details", state);
+        })
+        .fail(function (xhr) {
+          var body = xhr.responseJSON || {};
+          setState(node, "#node-input-device-details", "error", body.error && body.error.message || label(node, "devices.loadError", "Could not load device details.", "Gerätedetails konnten nicht geladen werden."));
+        });
+    }
+    function activateTab(node, name) {
+      node._shellyActiveTab = name;
+      $(".shelly-admin-tab-button").each(function () {
+        var active = $(this).attr("data-shelly-tab") === name;
+        $(this).toggleClass("active", active).attr("aria-selected", active ? "true" : "false");
+      });
+      $(".shelly-admin-tab-panel").each(function () {
+        var active = $(this).attr("data-shelly-panel") === name;
+        $(this).toggle(active).attr("aria-hidden", active ? "false" : "true");
+      });
+      node._shellyLoadedTabs = node._shellyLoadedTabs || {};
+      if (name === "current" && !node._shellyLoadedTabs.current) { node._shellyLoadedTabs.current = true; loadFindings(node, false); }
+      if (name === "history" && !node._shellyLoadedTabs.history) { node._shellyLoadedTabs.history = true; loadHistory(node, false); }
+      if (name === "devices" && !node._shellyLoadedTabs.devices) { node._shellyLoadedTabs.devices = true; loadDevices(node, false); }
     }
     RED.nodes.registerType("shelly-admin-monitor", {
       category: "network",
@@ -26,25 +245,110 @@
       icon: "font-awesome/fa-heartbeat",
       outputLabels: function (index) { return text(this, ["shelly-admin-monitor.output.health", "shelly-admin-monitor.output.alerts", "shelly-admin-monitor.output.errors"][index], ["Health", "Alerts", "Errors"][index]); },
       label: function () { return this.name || text(this, "shelly-admin-monitor.label.default", "Shelly monitor"); },
-      paletteLabel: function () { return text(this, "shelly-admin-monitor.label.palette", "Shelly monitor"); }
+      paletteLabel: function () { return text(this, "shelly-admin-monitor.label.palette", "Shelly monitor"); },
+      oneditprepare: function () {
+        var node = this;
+        node._shellyLoadedTabs = {};
+        node._shellyDeviceResult = null;
+        $("#node-input-manual-start").on("click.shellyAdmin", function () { postAction(node, { action: "start" }); });
+        $("#node-input-manual-cancel").on("click.shellyAdmin", function () { postAction(node, { action: "cancel", reason: "editor-button" }); });
+        $("#node-input-refresh-findings").on("click.shellyAdmin", function () { node._shellyLoadedTabs.current = true; loadFindings(node, true); });
+        $("#node-input-refresh-history").on("click.shellyAdmin", function () { node._shellyLoadedTabs.history = true; loadHistory(node, true); });
+        $("#node-input-refresh-devices").on("click.shellyAdmin", function () { node._shellyLoadedTabs.devices = true; loadDevices(node, true); });
+        $("#node-input-device-selector").on("change.shellyAdmin", function () {
+          var selected = $(this).val();
+          var result = node._shellyDeviceResult;
+          if (!result) return;
+          renderDeviceDetails(node, Object.assign({}, result, {
+            selectedDeviceId: selected,
+            details: result.detailsById && result.detailsById[selected] || null
+          }));
+        });
+        $(".shelly-admin-tab-button").on("click.shellyAdmin", function () { activateTab(node, $(this).attr("data-shelly-tab")); });
+        activateTab(node, "settings");
+      },
+      oneditsave: function () {},
+      oneditcancel: function () {},
+      oneditdelete: function () {}
     });
+    if (typeof window !== "undefined") window.shellyAdminMonitorEditor = { activateTab: activateTab, renderFindings: renderFindings, renderHistory: renderHistory, renderDeviceDetails: renderDeviceDetails };
   }());
 </script>
+
 <script type="text/html" data-template-name="shelly-admin-monitor">
-  <div class="form-row"><label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="shelly-admin-monitor.label.name"></span></label><input type="text" id="node-input-name"></div>
-  <div class="form-row"><label for="node-input-admin"><i class="fa fa-cog"></i> <span data-i18n="shelly-admin-monitor.label.admin"></span></label><input type="text" id="node-input-admin"></div>
-  <div class="form-row"><label for="node-input-periodic"><span data-i18n="shelly-admin-monitor.label.periodic"></span></label><input type="checkbox" id="node-input-periodic" style="width:auto"></div>
-  <div class="form-row"><label for="node-input-intervalSeconds"><span data-i18n="shelly-admin-monitor.label.intervalSeconds"></span></label><input type="number" id="node-input-intervalSeconds" min="10"></div>
-  <div class="form-row"><label for="node-input-automationMode"><span data-i18n="shelly-admin-monitor.label.automationMode"></span></label><select id="node-input-automationMode"><option value="off" data-i18n="shelly-admin-monitor.option.off"></option><option value="notify" data-i18n="shelly-admin-monitor.option.notify"></option><option value="actions" data-i18n="shelly-admin-monitor.option.actions"></option></select></div>
-  <div class="form-row"><label for="node-input-firmwarePolicy"><span data-i18n="shelly-admin-monitor.label.firmwarePolicy"></span></label><select id="node-input-firmwarePolicy"><option value="" data-i18n="shelly-admin-monitor.option.inheritPolicy"></option><option value="stable" data-i18n="shelly-admin-monitor.option.stableOnly"></option><option value="allow-beta" data-i18n="shelly-admin-monitor.option.allowBeta"></option></select></div>
-  <div class="form-row"><label for="node-input-outputMode"><span data-i18n="shelly-admin-monitor.label.outputMode"></span></label><select id="node-input-outputMode"><option value="current" data-i18n="shelly-admin-monitor.option.current"></option><option value="transitions" data-i18n="shelly-admin-monitor.option.transitions"></option><option value="current-and-transitions" data-i18n="shelly-admin-monitor.option.currentAndTransitions"></option></select></div>
-  <div class="form-tips"><span data-i18n="shelly-admin-monitor.tip.actions"></span></div>
+  <div id="node-input-shelly-tabs" class="shelly-admin-tabs" role="tablist" aria-label="Shelly monitor views">
+    <button type="button" id="node-input-tab-settings" class="red-ui-button shelly-admin-tab-button active" data-shelly-tab="settings" role="tab" aria-controls="node-input-panel-settings" aria-selected="true"><span data-i18n="shelly-admin-monitor.tabs.settings"></span></button>
+    <button type="button" id="node-input-tab-current" class="red-ui-button shelly-admin-tab-button" data-shelly-tab="current" role="tab" aria-controls="node-input-panel-current" aria-selected="false"><span data-i18n="shelly-admin-monitor.tabs.current"></span></button>
+    <button type="button" id="node-input-tab-history" class="red-ui-button shelly-admin-tab-button" data-shelly-tab="history" role="tab" aria-controls="node-input-panel-history" aria-selected="false"><span data-i18n="shelly-admin-monitor.tabs.history"></span></button>
+    <button type="button" id="node-input-tab-devices" class="red-ui-button shelly-admin-tab-button" data-shelly-tab="devices" role="tab" aria-controls="node-input-panel-devices" aria-selected="false"><span data-i18n="shelly-admin-monitor.tabs.devices"></span></button>
+  </div>
+
+  <section id="node-input-panel-settings" class="shelly-admin-tab-panel" data-shelly-panel="settings" role="tabpanel" aria-hidden="false">
+    <div class="form-row"><label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="shelly-admin-monitor.label.name"></span></label><input type="text" id="node-input-name"></div>
+    <div class="form-row"><label for="node-input-admin"><i class="fa fa-cog"></i> <span data-i18n="shelly-admin-monitor.label.admin"></span></label><input type="text" id="node-input-admin"></div>
+    <div class="form-row"><label for="node-input-periodic"><span data-i18n="shelly-admin-monitor.label.periodic"></span></label><input type="checkbox" id="node-input-periodic" style="width:auto"></div>
+    <div class="form-row"><label for="node-input-intervalSeconds"><span data-i18n="shelly-admin-monitor.label.intervalSeconds"></span></label><input type="number" id="node-input-intervalSeconds" min="10"></div>
+    <div class="form-row"><label for="node-input-automationMode"><span data-i18n="shelly-admin-monitor.label.automationMode"></span></label><select id="node-input-automationMode"><option value="off" data-i18n="shelly-admin-monitor.option.off"></option><option value="notify" data-i18n="shelly-admin-monitor.option.notify"></option><option value="actions" data-i18n="shelly-admin-monitor.option.actions"></option></select></div>
+    <div class="form-row"><label for="node-input-firmwarePolicy"><span data-i18n="shelly-admin-monitor.label.firmwarePolicy"></span></label><select id="node-input-firmwarePolicy"><option value="" data-i18n="shelly-admin-monitor.option.inheritPolicy"></option><option value="stable" data-i18n="shelly-admin-monitor.option.stableOnly"></option><option value="allow-beta" data-i18n="shelly-admin-monitor.option.allowBeta"></option></select></div>
+    <div class="form-row"><label for="node-input-outputMode"><span data-i18n="shelly-admin-monitor.label.outputMode"></span></label><select id="node-input-outputMode"><option value="current" data-i18n="shelly-admin-monitor.option.current"></option><option value="transitions" data-i18n="shelly-admin-monitor.option.transitions"></option><option value="current-and-transitions" data-i18n="shelly-admin-monitor.option.currentAndTransitions"></option></select></div>
+    <div class="form-row"><label><i class="fa fa-play-circle"></i> <span data-i18n="shelly-admin-monitor.label.manualControl"></span></label><button type="button" id="node-input-manual-start" class="red-ui-button"><i class="fa fa-play"></i> <span data-i18n="shelly-admin-monitor.button.start"></span></button> <button type="button" id="node-input-manual-cancel" class="red-ui-button"><i class="fa fa-stop"></i> <span data-i18n="shelly-admin-monitor.button.cancel"></span></button></div>
+    <div class="form-tips"><span data-i18n="shelly-admin-monitor.tip.deployControls"></span></div>
+    <div class="form-tips"><span data-i18n="shelly-admin-monitor.tip.actions"></span></div>
+  </section>
+
+  <section id="node-input-panel-current" class="shelly-admin-tab-panel" data-shelly-panel="current" role="tabpanel" aria-hidden="true" style="display:none">
+    <div class="shelly-view-toolbar"><strong data-i18n="shelly-admin-monitor.tabs.current"></strong><button type="button" id="node-input-refresh-findings" class="red-ui-button"><i class="fa fa-refresh"></i> <span data-i18n="shelly-admin-monitor.button.refreshFindings"></span></button></div>
+    <div id="node-input-current-findings" class="shelly-admin-view" aria-live="polite"></div>
+  </section>
+
+  <section id="node-input-panel-history" class="shelly-admin-tab-panel" data-shelly-panel="history" role="tabpanel" aria-hidden="true" style="display:none">
+    <div class="shelly-view-toolbar"><strong data-i18n="shelly-admin-monitor.tabs.history"></strong><button type="button" id="node-input-refresh-history" class="red-ui-button"><i class="fa fa-refresh"></i> <span data-i18n="shelly-admin-monitor.button.refreshHistory"></span></button></div>
+    <p class="shelly-view-hint" data-i18n="shelly-admin-monitor.history.hint"></p>
+    <div id="node-input-finding-history" class="shelly-admin-view" aria-live="polite"></div>
+  </section>
+
+  <section id="node-input-panel-devices" class="shelly-admin-tab-panel" data-shelly-panel="devices" role="tabpanel" aria-hidden="true" style="display:none">
+    <div class="shelly-view-toolbar"><label for="node-input-device-selector" data-i18n="shelly-admin-monitor.devices.select"></label><select id="node-input-device-selector"></select><button type="button" id="node-input-refresh-devices" class="red-ui-button"><i class="fa fa-refresh"></i> <span data-i18n="shelly-admin-monitor.button.refreshDevices"></span></button></div>
+    <div id="node-input-device-details" class="shelly-admin-view" aria-live="polite"></div>
+  </section>
+
+  <style>
+    .shelly-admin-tabs { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:12px; border-bottom:1px solid var(--red-ui-form-input-border-color,#bbb); padding-bottom:6px; }
+    .shelly-admin-tab-button.active { background:var(--red-ui-primary-background,#4b8); color:var(--red-ui-primary-text-color,#fff); font-weight:600; }
+    .shelly-admin-tab-panel { min-height:220px; }
+    .shelly-view-toolbar { display:flex; gap:8px; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .shelly-view-toolbar select { flex:1; min-width:160px; }
+    .shelly-admin-view { max-height:430px; overflow:auto; border:1px solid var(--red-ui-form-input-border-color,#ccc); padding:10px; border-radius:3px; background:var(--red-ui-secondary-background,#fff); }
+    .shelly-findings-summary { font-weight:600; margin-bottom:8px; }
+    .shelly-finding-card { border-left:5px solid #6b7280; padding:8px 10px; margin:8px 0; background:var(--red-ui-secondary-background,#f7f7f7); border-radius:2px; }
+    .shelly-severity-critical { border-left-color:#b91c1c; background:#fee2e2; }
+    .shelly-severity-warning { border-left-color:#d97706; background:#fef3c7; }
+    .shelly-severity-info { border-left-color:#2563eb; background:#dbeafe; }
+    .shelly-severity-cleared { border-left-color:#15803d; background:#dcfce7; }
+    .shelly-finding-heading { display:flex; gap:8px; align-items:center; }
+    .shelly-finding-badge { font-size:.78em; font-weight:700; text-transform:uppercase; padding:2px 6px; border:1px solid currentColor; border-radius:10px; }
+    .shelly-finding-device { margin-top:4px; opacity:.8; }
+    .shelly-finding-card p { margin:6px 0; }
+    .shelly-finding-meta, .shelly-device-fields { display:grid; grid-template-columns:minmax(105px,auto) 1fr; gap:3px 8px; margin:6px 0 0; font-size:.9em; }
+    .shelly-finding-meta dt, .shelly-device-fields dt { font-weight:600; }
+    .shelly-finding-meta dd, .shelly-device-fields dd { margin:0; overflow-wrap:anywhere; }
+    .shelly-view-state { padding:14px; text-align:center; border-radius:3px; }
+    .shelly-view-state-loading { opacity:.75; }
+    .shelly-view-state-error { color:#b91c1c; background:#fee2e2; }
+    .shelly-view-state-empty { color:inherit; background:var(--red-ui-secondary-background,#f3f4f6); opacity:.85; }
+    .shelly-view-hint { opacity:.8; }
+    .shelly-device-section { margin-bottom:12px; }
+    .shelly-baseline-row, .shelly-resolved-row { display:flex; justify-content:space-between; gap:8px; padding:5px 0; border-bottom:1px solid var(--red-ui-form-input-border-color,#ddd); }
+  </style>
 </script>
+
 <script type="text/html" data-help-name="shelly-admin-monitor">
   <p>Polls inventoried devices for reachability, response time, temperature, overtemperature, Wi-Fi RSSI, uptime, memory/filesystem, firmware state and available electrical values.</p>
-  <p>History is bounded and aggregated. Early-warning observations compare explicit current values with the device's own median/MAD baseline and, when enough comparable devices exist, peer medians. Every observation includes reasons, baseline, deviation, confidence and data quality. There is no opaque overall score and no guaranteed failure prediction.</p>
-  <p>Firmware/configuration changes start a warm-up period. Minimum samples, consecutive breaches, hysteresis, cooldown and missing-value handling reduce false alerts.</p>
-  <p>Version 0.2.0 emits Observation Schema 2 lifecycle states (<code>opened</code>, <code>present</code>, <code>updated</code>, <code>cleared</code>, <code>suppressed</code>) for firmware, offline/recovered, restart, temperature, latency, resource and conservative electrical observations. Select current state, transitions, or both without changing the existing three-output wiring.</p>
+  <p>The normal Node-RED edit dialog contains four usable views: <strong>Settings</strong>, <strong>Current Findings</strong>, <strong>History</strong> and <strong>Device Details</strong>. The three read-only result views use <code>shelly-admin.read</code>-protected Admin endpoints and never return credentials. Each view loads once on its first selection in the current dialog and then only through its visible Refresh button; reopening the dialog starts a new one-time load cycle. There is no periodic editor refresh. Manual refresh preserves scroll position and the selected device where possible.</p>
+  <p><strong>Current Findings</strong> groups human-readable cards into Firmware, Temperature, Offline/Recovery, Trends, Resources and Electrical observations. Cards show severity, title, model/device, IP address, explanation, current value, baseline/target, lifecycle and time. Critical, Warning, Info and Cleared states are visually distinct. Stable-only beta information remains informational; ordinary zero-power phases and normal load changes do not become electrical problem cards.</p>
+  <p><strong>History</strong> shows a bounded latest-first list of opened, updated, present, cleared and Recovery entries rather than raw samples. <strong>Device Details</strong> provides an inventory selector and safe identity, model, generation, IP, reachability, firmware, temperature, latency, resources, active findings, resolved errors and compact baseline data. Missing measurements are displayed as not available, never as synthetic zeroes.</p>
+  <p>History is bounded and aggregated. Early-warning observations compare explicit current values with the device's own median/MAD baseline and, when enough comparable devices exist, peer medians. There is no opaque overall score and no guaranteed failure prediction.</p>
+  <p><code>msg.action</code>: <code>start</code>/<code>poll</code>/<code>check</code>, <code>cancel</code>, <code>status</code>, <code>enable</code>, or <code>disable</code>. Message properties <code>automationMode</code>, <code>firmwarePolicy</code>, and <code>outputMode</code> override the editor values for one run. The editor buttons invoke the same deployed-node API. The existing Health, Alerts and Errors outputs and Observation Schema 2 remain unchanged; compact human summaries are additive.</p>
   <p><strong>Temperature safety:</strong> notifications are emitted first. An output can be switched off only in <em>Actions</em> mode and only when the exact device policy explicitly sets <code>autoShutdown:true</code>. No automatic re-enable occurs.</p>
   <p><strong>⚠️ Use at your own risk – no warranty.</strong> This is not a certified fire-protection system and cannot replace smoke alarms, protective devices, supervision or professional electrical installation. Unofficial community project, not affiliated with Shelly or Allterco; provided “as is”.</p>
 </script>

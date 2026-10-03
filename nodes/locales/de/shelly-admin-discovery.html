@@ -1,1 +1,9 @@
-<script type="text/html" data-help-name="shelly-admin-discovery"><p>Erkennt Gen1–Gen4-Geräte über die Gen1- und Gen2+-HTTP-APIs. Vorhandene Geräte werden inkrementell validiert; Vollscans finden Ergänzungen.</p><p>Version 0.2.0 erhält ein Gerät nach Timeout im Inventar. Eine erfolgreiche Discovery-Abfrage schließt genau einen aktiven Fehler, erhält ihn mit Auftretens-/Auflösungszeit und Grund als <code>lastResolvedError</code> und erzeugt ein Cleared-Recovery-Event.</p><p><strong>⚠️ Nutzung auf eigene Gefahr – keine Gewährleistung.</strong> Nur autorisierte Netze scannen.</p></script>
+<script type="text/html" data-help-name="shelly-admin-discovery">
+  <p>Erkennt Shelly-Geräte der Generationen 1–4 und pflegt das gemeinsame persistente Inventar.</p>
+  <h3>Eingang / Aktionen</h3>
+  <p><code>msg.action</code>: <code>start</code>/<code>scan</code>, <code>full</code>, <code>incremental</code>, <code>cancel</code> oder <code>status</code>. Optional ist <code>msg.mode</code> <code>initial</code>, <code>incremental</code> oder <code>full</code>; <code>msg.targets</code> liefert temporär IPs, Bereiche oder CIDRs. Start/Abbrechen im Editor nutzt nach dem Deploy dieselbe API.</p>
+  <h3>Ausgänge</h3>
+  <ol><li>Inventarergebnis mit Geräten, Zusammenfassung, <code>runId</code>, Zustand und Lifecycle.</li><li>Fortschritt/Lifecycle sowie Discovery-, Änderungs-, Offline- und Recovery-Events.</li><li>Strukturierte Fehler.</li></ol>
+  <p>Lifecycle-Zustände: started, running, cancel-requested, cancelled, completed, completed-with-issues, failed. Abbruch beendet aktive Requests, erhält abgeschlossene Probes, wertet nicht gestartete Ziele nicht als offline, persistiert konsistent und schließt einen abgebrochenen Vollscan nicht als vollständig ab.</p>
+  <p><strong>⚠️ Nutzung auf eigene Gefahr – keine Gewährleistung.</strong> Nur autorisierte Netze scannen. Inoffizielles Community-Projekt ohne Verbindung zu Shelly/Allterco.</p>
+</script>

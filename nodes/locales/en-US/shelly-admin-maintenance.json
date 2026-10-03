@@ -20,7 +20,8 @@
       "automaticUpdates": "Explicitly allow scheduled updates",
       "firmwarePolicy": "Firmware policy",
       "deviceTimeoutSeconds": "Update/reboot device timeout (s)",
-      "runTimeoutSeconds": "Run timeout (s)"
+      "runTimeoutSeconds": "Run timeout (s)",
+      "manualControl": "Manual control"
     },
     "option": {
       "check": "Check firmware",
@@ -42,14 +43,18 @@
       "errors": "errors"
     },
     "tip": {
-      "safety": "Dry-run is the safe default. Input-triggered updates and reboots also require msg.confirm=true. Roll out in stages and supervise."
+      "safety": "Dry-run is the safe default. Input-triggered updates and reboots also require msg.confirm=true. Roll out in stages and supervise.",
+      "deployControls": "Deploy first. Real updates and reboots require an additional confirmation; accepted device-side operations cannot be rolled back."
     },
     "status": {
-      "done": "{{action}} done · {{processed}}/{{total}} · {{updates}} upd · {{timeouts}} timeout · {{errors}} err · FW {{firmwareTimeoutMs}} ms",
-      "stopped": "{{action}} stopped · {{processed}}/{{total}} · {{updates}} upd · {{timeouts}} timeout · {{errors}} err · FW {{firmwareTimeoutMs}} ms",
+      "done": "{{checked}} checked · {{eligible}} eligible · {{skipped}} skipped · {{updated}} updated · {{failed}} failed · {{timeouts}} timeouts",
+      "stopped": "{{checked}} checked · {{eligible}} eligible · {{skipped}} skipped · {{updated}} updated · {{failed}} failed · {{timeouts}} timeouts",
       "error": "maintenance error",
       "starting": "{{action}} started · 0/{{total}} · FW {{firmwareTimeoutMs}} ms",
-      "progress": "{{action}} {{processed}}/{{total}} · {{updates}} upd · {{timeouts}} timeout · {{errors}} err · FW {{firmwareTimeoutMs}} ms · {{phase}}"
+      "progress": "{{checked}} checked · {{eligible}} eligible · {{skipped}} skipped · update {{processed}}/{{total}} · {{updated}} updated · {{failed}} failed · {{timeouts}} timeouts · {{phase}}",
+      "cancelling": "cancelling maintenance",
+      "cancelled": "{{action}} cancelled · {{processed}}/{{total}}",
+      "idle": "idle"
     },
     "error": {
       "noConfig": "A valid Shelly administration configuration is required.",
@@ -70,7 +75,93 @@
       "completedWithIssues": "completed with issues",
       "failed": "failed",
       "timedOut": "timed out",
-      "aborted": "aborted"
+      "aborted": "aborted",
+      "cancelRequested": "cancellation requested",
+      "cancelled": "cancelled",
+      "eligible": "eligibility complete",
+      "planned": "plan ready",
+      "updated": "updated"
+    },
+    "button": {
+      "start": "Start configured action",
+      "cancel": "Cancel",
+      "refresh": "Refresh"
+    },
+    "tabs": {
+      "settings": "Settings",
+      "status": "Current Status",
+      "devices": "Device Overview",
+      "history": "History"
+    },
+    "common": {
+      "unavailable": "Not available"
+    },
+    "filters": {
+      "label": "Filter",
+      "all": "All devices",
+      "updateAvailable": "Update available",
+      "error": "Error",
+      "offline": "Offline",
+      "updated": "Successfully updated",
+      "skipped": "Skipped"
+    },
+    "notify": {
+      "noRun": "No active run",
+      "sent": "Maintenance action requested",
+      "deploy": "Deploy the node before using editor controls."
+    },
+    "confirm": {
+      "destructive": "Run the selected maintenance action on the deployed node? This can cause outages."
+    },
+    "statusView": {
+      "active": "Maintenance run active",
+      "idle": "No maintenance run is active",
+      "state": "State",
+      "action": "Action",
+      "phase": "Phase",
+      "started": "Started",
+      "progress": "Progress",
+      "currentDevice": "Current device",
+      "latest": "Latest completed run",
+      "noLatest": "No completed maintenance run is available.",
+      "completed": "Completed",
+      "summary": "Summary",
+      "loading": "Loading current status…",
+      "loadError": "Could not load maintenance status."
+    },
+    "devices": {
+      "total": "devices",
+      "empty": "No devices match this filter.",
+      "noSelection": "No matching device is selected.",
+      "loading": "Loading device overview…",
+      "loadError": "Could not load the device overview.",
+      "model": "Device name / model",
+      "id": "Device ID",
+      "ip": "IP address",
+      "generation": "Generation",
+      "reachability": "Reachability",
+      "currentFirmware": "Current firmware",
+      "stableFirmware": "Available stable firmware",
+      "betaFirmware": "Available beta firmware",
+      "policy": "Firmware policy",
+      "eligible": "Update eligibility",
+      "selectedTarget": "Selected update target",
+      "lastCheckStatus": "Last firmware check status",
+      "lastCheckAt": "Last firmware check",
+      "lastUpdate": "Last firmware update",
+      "lastSuccessful": "Last successful update",
+      "lastFailed": "Last failed update attempt",
+      "error": "Error / timeout",
+      "recovery": "Recovery after update",
+      "maintenance": "Maintenance run"
+    },
+    "history": {
+      "hint": "Latest 50 completed maintenance runs, newest first.",
+      "empty": "No maintenance runs have been recorded yet.",
+      "loading": "Loading maintenance history…",
+      "loadError": "Could not load maintenance history.",
+      "summary": "Showing the latest",
+      "deviceResults": "device results"
     }
   }
 }

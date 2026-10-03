@@ -155,7 +155,7 @@ test("resource trends skip missing metrics and require sustained low values", ()
   assert.equal(events.some((item) => item.metric === "fsFreePct"), false);
 });
 
-test("electrical observations ignore one zero and describe repeated power and energy changes conservatively", () => {
+test("regular zero-power phases never become an electrical anomaly", () => {
   const history = new DeviceHistory({ rawRetentionHours: 720 });
   const analysis = detector();
   const start = Date.now() - 60 * 60000;
@@ -168,11 +168,56 @@ test("electrical observations ignore one zero and describe repeated power and en
     events = analysis.evaluate(current, history, [current], now + index * 60000);
     if (index === 0) assert.equal(events.some((item) => item.metric === "powerW"), false);
   }
-  assert.ok(events.some((item) => item.metric === "powerW"));
+  assert.equal(events.some((item) => item.metric === "powerW"), false);
   const counter = events.find((item) => item.metric === "energyWh");
   assert.ok(counter);
   assert.equal(counter.severity, "info");
   assert.match(counter.reasons.join(" "), /no defect is asserted/);
+});
+
+test("cyclic off/load profiles and a first load after an all-zero history are normal", () => {
+  const start = Date.now() - 180 * 60000;
+  for (const mode of ["cyclic", "all-zero"]) {
+    const history = new DeviceHistory({ rawRetentionHours: 720 });
+    const analysis = detector({ electricalTriggerConsecutive: 4 });
+    for (let index = 0; index < 30; index += 1) {
+      const powerW = mode === "cyclic" && index % 2 ? 120 : 0;
+      history.add(device("device-1", { latencyMs: 20, temperatureC: 40, uptimeSec: 1000 + index, powerW, voltageV: 230, energyWh: 1000 + Math.floor(index / 2) * 2 }), start + index * 60000);
+    }
+    let events = [];
+    for (let index = 0; index < 8; index += 1) {
+      const powerW = mode === "cyclic" && index % 2 === 0 ? 0 : 120;
+      const now = Date.now() + index * 60000;
+      const current = device("device-1", { latencyMs: 20, temperatureC: 40, uptimeSec: 5000 + index, powerW, voltageV: 230, energyWh: 1100 + index * 2 });
+      history.add(current, now);
+      events.push(...analysis.evaluate(current, history, [current], now));
+    }
+    assert.equal(events.some((item) => item.metric === "powerW" || item.metric === "energyRateWhPerHour"), false, mode);
+  }
+});
+
+test("a sustained unusual active electrical pattern is conservative and de-duplicated", () => {
+  const history = new DeviceHistory({ rawRetentionHours: 720 });
+  const analysis = detector({ electricalTriggerConsecutive: 4 });
+  const start = Date.now() - 120 * 60000;
+  let energyWh = 1000;
+  for (let index = 0; index < 30; index += 1) {
+    energyWh += 2;
+    history.add(device("device-1", { latencyMs: 20, temperatureC: 40, uptimeSec: 1000 + index, powerW: index % 3 ? 100 : 0, voltageV: 230, energyWh }), start + index * 60000);
+  }
+  let opened = [];
+  for (let index = 0; index < 4; index += 1) {
+    energyWh += 5;
+    const now = Date.now() + index * 60000;
+    const current = device("device-1", { latencyMs: 20, temperatureC: 40, uptimeSec: 5000 + index, powerW: 300, voltageV: 230, energyWh });
+    history.add(current, now);
+    opened = analysis.evaluate(current, history, [current], now);
+  }
+  const electrical = opened.filter((item) => item.kind === "electrical-observation" && ["powerW", "energyRateWhPerHour"].includes(item.metric));
+  assert.equal(electrical.length, 1);
+  assert.equal(electrical[0].metric, "powerW");
+  assert.deepEqual(electrical[0].observation.correlatedMetrics, ["energyRateWhPerHour"]);
+  assert.match(electrical[0].reasons.join(" "), /no defect|not evidence of an electrical defect/i);
 });
 
 test("expected and repeated unexpected restarts are separately observable", () => {

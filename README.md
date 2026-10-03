@@ -21,7 +21,27 @@ Node-RED nodes for local Shelly fleet administration: discovery, persistent inve
 | `shelly-admin-monitor` | Polling, history, observations and temperature safety | Health · alerts · errors |
 | `shelly-admin-maintenance` | Firmware checks, dry-runs, rolling updates and conditional reboots | Result · per-device progress · errors |
 
-Version 0.2.0 keeps the existing node type names, three-output wiring, Node.js 18+/Node-RED 3.1+ support, Gen1–Gen4 normalization, Context-store persistence, Stable-only default firmware policy, optional beta policy, structured errors, and temperature safety behavior.
+Version 0.3.0 keeps the existing node type names, three-output wiring, Node.js 18+/Node-RED 3.1+ support, Gen1–Gen4 normalization, Context-store persistence, Stable-only default firmware policy, optional beta policy, structured errors, and temperature safety behavior. It adds a dual operation model: every operational command is available through `msg.action` and through Start/Cancel controls in the deployed node's editor dialog.
+
+## Unified action and lifecycle API
+
+| Node | Start/run actions | Control actions |
+|---|---|---|
+| Discovery | `start`, `scan`, `full`, `incremental` | `cancel`, `status` |
+| Monitor | `start`, `poll`, `check` | `cancel`, `status`, `enable`, `disable` |
+| Maintenance | `start`, `check`, `update`, `reboot` | `cancel`, `status` |
+
+Example:
+
+```json
+{"action":"scan","mode":"full","targets":"192.168.10.0/24"}
+```
+
+Every active run has a `runId`; progress and final payloads report `state`, `phase`, `processed`, `total`, `unprocessed`, timestamps, and a nested `shelly-admin.lifecycle/1` object. Common states are `started`, `running`, `cancel-requested`, `cancelled`, `completed`, `completed-with-issues`, and `failed`. `status` is read-only. `cancel` is idempotent and reports `idle` if no run is active.
+
+Cancellation is propagated through bounded concurrency, HTTP requests, firmware checks, post-restart validation polling, and stagger waits. Completed device work is retained and persisted. Unstarted discovery targets are not marked unreachable, and a cancelled full scan does not advance its completion timestamp. A firmware update or reboot already accepted by a device cannot be rolled back; the result records the current device and the cancellation point.
+
+The complete per-node message contract, lifecycle records, output topics, recovery examples, firmware workflows and cancellation semantics are in [docs/MESSAGE-API.md](docs/MESSAGE-API.md) ([German](docs/MESSAGE-API.de.md)).
 
 ## Install
 
@@ -29,14 +49,14 @@ From the Node-RED user directory:
 
 ```bash
 cd ~/.node-red
-npm install @impact0815/node-red-contrib-shelly-admin@0.2.0
+npm install @impact0815/node-red-contrib-shelly-admin@0.3.0
 ```
 
 From the supplied package:
 
 ```bash
 cd ~/.node-red
-npm install /path/to/impact0815-node-red-contrib-shelly-admin-0.2.0.tgz
+npm install /path/to/impact0815-node-red-contrib-shelly-admin-0.3.0.tgz
 ```
 
 Restart Node-RED and add one `shelly-admin-config` node plus the required discovery, monitor, and maintenance nodes.
@@ -50,6 +70,8 @@ Targets accept CIDR networks, full or short IPv4 ranges, individual addresses, a
 - Stable-only is the default firmware policy; beta must be explicitly allowed.
 - `firmwareCheckTimeoutMs` defaults to `2500`, accepts `250–60000`, and is passed unchanged to the complete check and all related requests.
 - One device timeout/error is recorded and does not stop the remaining read-only firmware checks.
+- An update run has two phases: it first checks every selected device, then sends update/restart/validation work only to policy-eligible devices. Under Stable-only, beta-only or no-update devices immediately finish as `skipped` with `no-policy-eligible-update`.
+- Progress separates `checked`, `eligible`, `skipped`, `updated`, `failed`, and `timeouts`. After planning, `processed/total` covers only actual update candidates. A dry-run returns `plannedUpdates` and performs no update, stagger, restart wait, or validation.
 
 ## Local persistence and migration
 
@@ -134,7 +156,7 @@ Temperature trends are separate from static `warning`, `critical`, and hardware-
 
 Restart analysis records uptime decreases and a bounded restart history. Firmware updates and requested maintenance reboots create expectation markers. Unexpected repeated restarts are reported separately; counter reset, missing uptime, and API uncertainty remain explicit.
 
-Resource analysis skips unsupported metrics and requires sustained RAM/filesystem change. Electrical analysis is deliberately conservative: isolated zero-power values are not alerts, energy-counter decreases require repetition, non-negative counter deltas can form an energy-rate baseline, and wording allows usage changes, reset, data gaps, firmware behavior, or device replacement. No defect is asserted.
+Resource analysis skips unsupported metrics and requires sustained RAM/filesystem change. Electrical analysis is deliberately conservative and activity-aware. Zero and near-zero power phases are normal operating states, whether isolated, long, cyclic, daily/nightly, or frequently alternating with load. Active-load values are compared only with a sufficiently populated active-state baseline; a first transition from historical 0 W to load is not enough. Electrical triggers require more repeated confirmations than general trends. Correlated `powerW` and `energyRateWhPerHour` findings are consolidated. Counter decreases still require repetition, and every remaining finding explicitly allows usage, reset, data-gap, firmware, or replacement explanations rather than asserting a defect.
 
 ## Observation Schema 2
 
@@ -158,7 +180,34 @@ The monitor offers:
 - **Transitions only**;
 - **Current state and transitions** (default and 0.1.x-compatible behavior).
 
-The three existing outputs remain Health, Alerts, and Errors. Alert payloads include the selected mode and structured observations. Node status shows online/offline, warning, critical, anomaly, firmware-update, and warm-up counts.
+The normal Monitor edit dialog now contains four visible, keyboard-focusable views:
+
+- **Settings** — all existing monitor configuration and Start/Cancel controls;
+- **Current Findings** — the last runtime-known findings, grouped as Firmware, Temperature, Offline/Recovery, Trends, Resources, and Electrical observations;
+- **History** — the latest 50 human-readable finding states/transitions, newest first, including `opened`, `updated`, `present`, `cleared`, and Recovery, without dumping raw time-series data;
+- **Device Details** — an inventory selector plus identity, model, generation, IP, reachability, firmware, temperature, latency, resources, active findings, resolved errors, and available median/MAD baselines.
+
+Each result view loads only when it is selected for the first time in the currently open dialog, after the dialog is reopened, or when its visible **Refresh** button is pressed. There is no periodic editor refresh, so tab changes do not repeatedly reset reading position or selection. Manual refresh preserves scroll position and the selected device where possible. Loading, error, and empty states are visible. Each finding card shows severity, a plain-language title, device/model, IP, explanation, current value, baseline or firmware target, lifecycle, and time. Critical, Warning, Info, and Cleared have separate visual treatments. Missing device measurements are rendered as **Not available**, never as zero.
+
+The editor uses these read-only Admin routes:
+
+- `GET /shelly-admin/nodes/:id/findings`
+- `GET /shelly-admin/nodes/:id/history?limit=50` (server-bounded to 1–200)
+- `GET /shelly-admin/nodes/:id/devices`
+
+All three routes require the Node-RED permission `shelly-admin.read`, disable response caching, and return allow-listed operational fields only—never credentials. The History and current-finding views are persisted with the existing Context state, bounded to 200 human-readable entries.
+
+The Maintenance edit dialog provides the matching **Settings**, **Current Status**, **Device Overview**, and **History** views. Device Overview shows device name/model, device ID, IP, generation, reachability, current firmware, Stable/Beta availability under the configured policy, update eligibility, last firmware-check status/time, last update time/result, last successful update, last failed attempt, errors/timeouts, post-update recovery, and active/completed runs. Filters cover **Update available**, **Error**, **Offline**, **Successfully updated**, and **Skipped**. Missing values are shown as **Not available**. The same first-open/manual-refresh rule applies and preserves filter, selected device, and scroll position where possible.
+
+Maintenance uses additional read-only, no-store routes protected by `shelly-admin.read`:
+
+- `GET /shelly-admin/nodes/:id/maintenance/status`
+- `GET /shelly-admin/nodes/:id/maintenance/devices`
+- `GET /shelly-admin/nodes/:id/maintenance/history?limit=50` (server-bounded to 1–200)
+
+Completed maintenance summaries and their allow-listed per-device result fields are persisted as an additive bounded history (100 runs). Credentials and arbitrary private device payloads are not included.
+
+The three existing outputs remain Health, Alerts, and Errors. Existing Observation Schema 2 objects remain unchanged. Health and Alert payloads add `summaryText`, `summaryTextDe`, `humanSummary`, `findingsSummary`, and grouped `cards`. Canonical card groups are `firmware`, `temperature`, `recovery`, `trends`, `resources`, and `electrical`; the previous aggregate `cards.anomalies` remains as a compatibility alias. Node status reports policy-eligible firmware updates, temperature warnings, offline devices, actionable anomalies, and critical states. Beta-only information under Stable-only remains Info and is not counted as a warning; ordinary zero-power phases and normal load changes do not become electrical problem findings.
 
 ## Temperature safety
 
@@ -188,6 +237,29 @@ Defaults are 70 °C warning, 85 °C critical, 5 °C hysteresis, three consecutiv
 
 Only known switch outputs are addressed. Automatic re-enable is never performed.
 
+## Human-friendly Monitoring UI
+ 
+The monitor node includes interactive editor views for human operators:
+ 
+- Current Findings
+- History
+- Device Details
+ 
+This allows firmware information, warnings, recovery events, trends and other findings to be reviewed directly within the Node-RED editor without parsing raw JSON output.
+ 
+![Current Findings](docs/images/current-findings.png)
+
+## Complete importable examples
+
+Import one JSON file from the `examples/` directory; no manual node assembly is required:
+
+- `01-discovery-monitor.json` — compact discovery/monitor starter;
+- `02-safe-maintenance.json` — compact maintenance starter;
+- `03-complete-operations-en.json` — complete English operation, action, cancellation, dashboard, notification, debug, firmware, recovery, temperature, anomaly and trend flow;
+- `04-kompletter-betrieb-de.json` — functionally equivalent German flow.
+
+The full flows use only these Shelly Admin nodes and Node-RED core nodes. Their browser dashboard is exposed at `/shelly-admin-dashboard-en` or `/shelly-admin-dashboard-de` and refreshes every 15 seconds. Notification routing writes transition warnings to the runtime log and Debug sidebar and is intentionally easy to extend with an approved e-mail, Teams, MQTT, or webhook node. Real firmware update is double-gated by an explicit flow-context arm flag and an exact placeholder device ID; read-only check and dry-run paths work immediately after target/configuration review. See [examples/README.md](examples/README.md).
+
 ## Development and verification
 
 ```bash
@@ -198,4 +270,4 @@ npm run test:coverage
 npm pack --dry-run
 ```
 
-Release commands, npm publishing, Node-RED linking, Docker installation, checksums, and rollback-oriented verification are in [RELEASE.md](RELEASE.md). Changes are listed in [CHANGELOG.md](CHANGELOG.md) and [RELEASE-NOTES-0.2.0.md](RELEASE-NOTES-0.2.0.md).
+Release commands, npm publishing, Node-RED installation, Docker smoke tests, checksums, and rollback-oriented verification are in [RELEASE.md](RELEASE.md). Changes are listed in [CHANGELOG.md](CHANGELOG.md) and [RELEASE-NOTES-0.3.0.md](RELEASE-NOTES-0.3.0.md).

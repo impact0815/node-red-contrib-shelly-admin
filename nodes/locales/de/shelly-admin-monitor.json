@@ -9,7 +9,9 @@
       "intervalSeconds": "Intervall (s)",
       "automationMode": "Automatikmodus",
       "firmwarePolicy": "Firmware-Richtlinie",
-      "outputMode": "Ausgabemodus Beobachtungen"
+      "outputMode": "Ausgabemodus Beobachtungen",
+      "manualControl": "Manuelle Bedienung",
+      "currentFindings": "Aktuelle Befunde"
     },
     "option": {
       "off": "Nur beobachten",
@@ -28,7 +30,8 @@
       "errors": "Fehler"
     },
     "tip": {
-      "actions": "Der Aktionsmodus erfordert zusätzlich eine exakte autoShutdown-Richtlinie je Gerät. Ausgänge werden nie automatisch wiedereingeschaltet."
+      "actions": "Der Aktionsmodus erfordert zusätzlich eine exakte autoShutdown-Richtlinie je Gerät. Ausgänge werden nie automatisch wiedereingeschaltet.",
+      "deployControls": "Zuerst deployen. Die Schaltflächen steuern die deployte Node und verwenden dieselbe Action-API wie msg.action."
     },
     "status": {
       "polling": "Abfrage läuft",
@@ -36,13 +39,105 @@
       "error": "Überwachungsfehler",
       "warning": "{{online}} online · {{offline}} offline · {{warnings}} Warnungen",
       "critical": "{{online}} online · {{offline}} offline · {{critical}} kritisch",
-      "readyDetailed": "{{online}} an · {{offline}} aus · {{anomalies}} Anomalien · {{firmware}} FW · {{warmup}} Warm-up",
-      "warningDetailed": "{{online}} an · {{offline}} aus · {{warnings}} Warnungen · {{anomalies}} Anomalien · {{firmware}} FW · {{warmup}} Warm-up",
-      "criticalDetailed": "{{online}} an · {{offline}} aus · {{critical}} kritisch · {{anomalies}} Anomalien · {{firmware}} FW · {{warmup}} Warm-up"
+      "readyDetailed": "FW-Updates: {{firmware}} · Temperaturwarnungen: {{temperature}} · offline: {{offline}} · handlungsrelevante Anomalien: {{anomalies}} · kritisch: {{critical}}",
+      "warningDetailed": "FW-Updates: {{firmware}} · Temperaturwarnungen: {{temperature}} · offline: {{offline}} · handlungsrelevante Anomalien: {{anomalies}} · kritisch: {{critical}}",
+      "criticalDetailed": "FW-Updates: {{firmware}} · Temperaturwarnungen: {{temperature}} · offline: {{offline}} · handlungsrelevante Anomalien: {{anomalies}} · kritisch: {{critical}}",
+      "progress": "{{processed}}/{{total}} · {{phase}}",
+      "cancelling": "Abfrage wird abgebrochen",
+      "cancelled": "Abfrage abgebrochen · {{processed}}/{{total}}",
+      "idle": "inaktiv",
+      "enabled": "regelmäßig aktiv · {{seconds}} s",
+      "disabled": "regelmäßig deaktiviert"
     },
     "error": {
       "noConfig": "Eine gültige Shelly-Verwaltungskonfiguration ist erforderlich.",
       "busy": "Ein Überwachungszyklus läuft bereits."
+    },
+    "button": {
+      "start": "Jetzt abfragen",
+      "cancel": "Abbrechen",
+      "refreshFindings": "Aktualisieren",
+      "refreshHistory": "Aktualisieren",
+      "refreshDevices": "Aktualisieren"
+    },
+    "phase": {
+      "starting": "Start",
+      "polling": "Abfrage",
+      "analyzing": "Analyse",
+      "cancelRequested": "Abbruch angefordert",
+      "cancelled": "abgebrochen",
+      "completed": "abgeschlossen",
+      "completedWithIssues": "mit Problemen abgeschlossen",
+      "failed": "fehlgeschlagen"
+    },
+    "findings": {
+      "firmware": "Firmware",
+      "temperature": "Temperatur",
+      "recovery": "Recovery / offline",
+      "anomalies": "Anomalien",
+      "trends": "Trends",
+      "current": "Aktuell",
+      "baseline": "Baseline / Ziel",
+      "lifecycle": "Lifecycle",
+      "empty": "Keine aktuellen handlungsrelevanten Befunde.",
+      "loading": "Aktuelle Befunde werden geladen…",
+      "loadError": "Monitor-Node deployen, um aktuelle Befunde zu laden.",
+      "resources": "Ressourcen",
+      "electrical": "Elektrische Beobachtungen",
+      "time": "Zeitpunkt",
+      "titleFallback": "Befund",
+      "fleet": "Flotte"
+    },
+    "tabs": {
+      "settings": "Einstellungen",
+      "current": "Aktuelle Befunde",
+      "history": "Historie",
+      "devices": "Gerätedetails"
+    },
+    "common": {
+      "unavailable": "Nicht verfügbar"
+    },
+    "severity": {
+      "critical": "Kritisch",
+      "warning": "Warnung",
+      "info": "Info",
+      "cleared": "Behoben"
+    },
+    "notify": {
+      "noRun": "Kein aktiver Lauf",
+      "deploy": "Node vor der Editor-Bedienung deployen."
+    },
+    "history": {
+      "hint": "Die letzten 50 Befundzustände und Übergänge; Rohmesswerte werden bewusst nicht angezeigt.",
+      "empty": "Noch keine Befundübergänge aufgezeichnet.",
+      "loading": "Befundhistorie wird geladen…",
+      "loadError": "Befundhistorie konnte nicht geladen werden.",
+      "summary": "Angezeigt werden die letzten"
+    },
+    "devices": {
+      "select": "Gerät",
+      "empty": "Keine inventarisierten Geräte verfügbar.",
+      "loading": "Gerätedetails werden geladen…",
+      "loadError": "Gerätedetails konnten nicht geladen werden.",
+      "identity": "Identität",
+      "model": "Modell",
+      "generation": "Generation",
+      "ip": "IP-Adresse",
+      "reachability": "Erreichbarkeit",
+      "online": "Online",
+      "offline": "Offline",
+      "firmware": "Firmware",
+      "stable": "Stable-Zielversion",
+      "temperature": "Temperatur",
+      "latency": "Latenz",
+      "ram": "Freier RAM",
+      "filesystem": "Freies Dateisystem",
+      "activeFindings": "Aktive Befunde",
+      "noActive": "Keine aktiven Befunde.",
+      "baselines": "Verfügbare Baselines",
+      "noBaselines": "Noch keine Baseline verfügbar.",
+      "resolvedErrors": "Aufgelöste Fehler",
+      "noResolved": "Keine aufgelösten Fehler gespeichert."
     }
   }
 }

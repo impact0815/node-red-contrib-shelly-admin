@@ -1,0 +1,891 @@
+[
+  {
+    "id": "tab-shelly-admin-03-en",
+    "type": "tab",
+    "label": "Shelly Admin 0.3.0 – Complete operations",
+    "disabled": false,
+    "info": "Directly importable reference flow. Adjust the authorized target network before deployment. Use at your own risk."
+  },
+  {
+    "id": "cfg-shelly-admin-03-en",
+    "type": "shelly-admin-config",
+    "name": "Local Shelly fleet",
+    "targets": "192.168.1.0/24",
+    "autoSubnets": false,
+    "minimumAutoPrefix": 24,
+    "maxAddresses": 4096,
+    "discoveryConcurrency": 32,
+    "monitorConcurrency": 16,
+    "timeoutMs": 2500,
+    "fullScanIntervalHours": 168,
+    "contextStore": "file",
+    "rawRetentionHours": 48,
+    "aggregateRetentionDays": 90,
+    "bucketMinutes": 60,
+    "anomalyMinSamples": 24,
+    "anomalyWarmupSamples": 12,
+    "anomalyTriggerConsecutive": 3,
+    "anomalyClearConsecutive": 3,
+    "anomalyCooldownMinutes": 120,
+    "temperatureWarningC": 70,
+    "temperatureCriticalC": 85,
+    "temperatureHysteresisC": 5,
+    "temperatureConsecutive": 3,
+    "temperatureCooldownMinutes": 15,
+    "policies": "[]",
+    "firmwarePolicy": "stable",
+    "maintenanceDeviceTimeoutSeconds": 15,
+    "maintenanceRunTimeoutSeconds": 900,
+    "firmwareCheckTimeoutMs": 2500,
+    "maxRawSamplesPerDevice": 10000,
+    "maxBucketsPerDevice": 10000,
+    "maxBytesPerDevice": 1048576,
+    "anomalyProfile": "Conservative",
+    "baselineWindowDays": 30,
+    "peerMinDevices": 3,
+    "peerFirmwareMajor": true,
+    "restartWindowHours": 24,
+    "restartThreshold": 3,
+    "enableRecovery": true,
+    "enableLatencyTrend": true,
+    "enableTemperatureTrend": true,
+    "enableRestartPattern": true,
+    "enableResources": true,
+    "enableElectrical": true,
+    "enablePeerComparison": true
+  },
+  {
+    "id": "comment-guide-en",
+    "type": "comment",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Guide / safety",
+    "info": "QUICK START\n1. Select only authorized target networks and a localfilesystem Context store in the config node.\n2. Deploy. Use Inject nodes or editor Start/Cancel controls.\n3. Dashboard: http://<node-red-host>:1880/shelly-admin-dashboard-en\n4. Firmware check is read-only. Update dry-run changes nothing.\n5. The real-update path is constrained to a placeholder device ID and also requires explicit arming.\nLifecycle: started/running/cancel-requested/cancelled/completed/completed-with-issues/failed.\nMonitor editor: Settings, Current Findings, History and Device Details are real clickable views. Each read-only result view loads once on first tab selection and then only through its visible Refresh button; there is no periodic editor refresh. Permission-protected Admin endpoints show loading, error and empty states. Structured monitor outputs include summaryText, summaryTextDe, humanSummary, findingsSummary and category cards. Firmware updates first check all selected devices, then plan/update only policy-eligible devices; dry-run exposes plannedUpdates without stagger or validation waits.\nMaintenance editor: Settings, Current Status, Device Overview and History are clickable views. Device Overview shows policy-aware firmware eligibility, check/update results, errors/timeouts and recovery, with Update available, Error, Offline, Successfully updated and Skipped filters.",
+    "x": 180,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "id": "discovery-en",
+    "type": "shelly-admin-discovery",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Discovery + Lifecycle",
+    "admin": "cfg-shelly-admin-03-en",
+    "mode": "incremental",
+    "scanOnStart": false,
+    "startDelaySeconds": 2,
+    "x": 460,
+    "y": 140,
+    "wires": [
+      [
+        "fn-inventory-en",
+        "debug-inventory-en"
+      ],
+      [
+        "debug-discovery-events-en"
+      ],
+      [
+        "debug-errors-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-full-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Start full scan",
+    "props": [
+      {
+        "p": "action",
+        "v": "scan",
+        "vt": "str"
+      },
+      {
+        "p": "mode",
+        "v": "full",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 100,
+    "wires": [
+      [
+        "discovery-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-cancel-discovery-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Cancel discovery",
+    "props": [
+      {
+        "p": "action",
+        "v": "cancel",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 160,
+    "y": 140,
+    "wires": [
+      [
+        "discovery-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-status-discovery-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Discovery status",
+    "props": [
+      {
+        "p": "action",
+        "v": "status",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 180,
+    "wires": [
+      [
+        "discovery-en"
+      ]
+    ]
+  },
+  {
+    "id": "fn-inventory-en",
+    "type": "function",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Store inventory for dashboard",
+    "func": "flow.set(\"shellyAdminInventory\", msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 760,
+    "y": 100,
+    "wires": [
+      [
+        "debug-inventory-en"
+      ]
+    ]
+  },
+  {
+    "id": "debug-inventory-en",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Inventory / health debug",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1030,
+    "y": 100,
+    "wires": []
+  },
+  {
+    "id": "debug-discovery-events-en",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Discovery, change and progress events",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 840,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "debug-errors-en",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-en",
+    "name": "All structured errors",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1040,
+    "y": 640,
+    "wires": []
+  },
+  {
+    "id": "monitor-en",
+    "type": "shelly-admin-monitor",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Monitor: findings, alerts, recovery, trends",
+    "admin": "cfg-shelly-admin-03-en",
+    "periodic": true,
+    "intervalSeconds": 60,
+    "automationMode": "notify",
+    "firmwarePolicy": "",
+    "outputMode": "current-and-transitions",
+    "x": 500,
+    "y": 300,
+    "wires": [
+      [
+        "fn-health-en",
+        "debug-inventory-en"
+      ],
+      [
+        "fn-route-alerts-en"
+      ],
+      [
+        "debug-errors-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-monitor-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Poll monitor now",
+    "props": [
+      {
+        "p": "action",
+        "v": "start",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 260,
+    "wires": [
+      [
+        "monitor-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-monitor-cancel-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Cancel monitor",
+    "props": [
+      {
+        "p": "action",
+        "v": "cancel",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 300,
+    "wires": [
+      [
+        "monitor-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-monitor-status-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Monitor status",
+    "props": [
+      {
+        "p": "action",
+        "v": "status",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 340,
+    "wires": [
+      [
+        "monitor-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-monitor-enable-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Enable periodic monitor",
+    "props": [
+      {
+        "p": "action",
+        "v": "enable",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 380,
+    "wires": [
+      [
+        "monitor-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-monitor-disable-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Disable periodic monitor",
+    "props": [
+      {
+        "p": "action",
+        "v": "disable",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 420,
+    "wires": [
+      [
+        "monitor-en"
+      ]
+    ]
+  },
+  {
+    "id": "fn-health-en",
+    "type": "function",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Health/history + compact findings",
+    "func": "flow.set(\"shellyAdminHealth\", msg.payload);\nflow.set(\"shellyAdminFindings\", {summaryText: msg.payload.summaryText, summaryTextDe: msg.payload.summaryTextDe, humanSummary: msg.payload.humanSummary, findingsSummary: msg.payload.findingsSummary, cards: msg.payload.cards});\nconst compact = RED.util.cloneMessage(msg);\ncompact.topic = \"shelly-admin/findings-summary\";\ncompact.payload = {summaryText: msg.payload.summaryText, summaryTextDe: msg.payload.summaryTextDe, humanSummary: msg.payload.humanSummary, findingsSummary: msg.payload.findingsSummary, cards: msg.payload.cards};\nreturn [msg, compact];",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 800,
+    "y": 260,
+    "wires": [
+      [],
+      [
+        "debug-findings-en"
+      ]
+    ]
+  },
+  {
+    "id": "fn-route-alerts-en",
+    "type": "function",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Alert, recovery, temperature, firmware, anomaly/trend router",
+    "func": "const buckets = [[], [], [], []];\nconst observations = Array.isArray(msg.payload && msg.payload.observations) ? msg.payload.observations : [];\nfor (const observation of observations) {\n    const copy = RED.util.cloneMessage(msg);\n    copy.payload = observation;\n    copy.topic = \"shelly-admin/observation/\" + observation.kind;\n    if (observation.category === \"recovery\" || observation.lifecycle === \"cleared\") buckets[1].push(copy);\n    if (observation.kind === \"temperature\") buckets[2].push(copy);\n    if ([\"latency-trend\", \"temperature-trend\", \"restart-pattern\", \"resource-trend\", \"electrical-observation\", \"latency-network-factor\"].includes(observation.kind)) buckets[3].push(copy);\n    if ([\"warning\", \"critical\"].includes(observation.severity) && [\"opened\", \"updated\"].includes(observation.lifecycle)) buckets[0].push(copy);\n}\nflow.set(\"shellyAdminAlerts\", msg.payload);\nflow.set(\"shellyAdminFindings\", {summaryText: msg.payload.summaryText, summaryTextDe: msg.payload.summaryTextDe, humanSummary: msg.payload.humanSummary, findingsSummary: msg.payload.findingsSummary, cards: msg.payload.cards});\nreturn buckets.map((items) => items.length ? items : null);",
+    "outputs": 4,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 840,
+    "y": 340,
+    "wires": [
+      [
+        "fn-notify-en"
+      ],
+      [
+        "debug-recovery-en"
+      ],
+      [
+        "debug-temperature-en"
+      ],
+      [
+        "debug-trends-en"
+      ]
+    ]
+  },
+  {
+    "id": "fn-notify-en",
+    "type": "function",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Notification (sidebar + runtime warning)",
+    "func": "const d = msg.payload.device || {};\nnode.warn(`${msg.payload.severity}: ${msg.payload.kind} ${d.id || d.ip || \"device\"}`);\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1170,
+    "y": 300,
+    "wires": [
+      [
+        "debug-notify-en"
+      ]
+    ]
+  },
+  {
+    "id": "debug-notify-en",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Notifications",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1440,
+    "y": 300,
+    "wires": []
+  },
+  {
+    "id": "debug-recovery-en",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Recovery/lifecycle events",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1200,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "id": "debug-temperature-en",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Temperature warnings",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1180,
+    "y": 380,
+    "wires": []
+  },
+  {
+    "id": "debug-trends-en",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Anomalies, trends, history",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1190,
+    "y": 420,
+    "wires": []
+  },
+  {
+    "id": "maint-en",
+    "type": "shelly-admin-maintenance",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Two-phase firmware check/update",
+    "admin": "cfg-shelly-admin-03-en",
+    "action": "check",
+    "deviceSelectors": "",
+    "allowAll": true,
+    "dryRun": true,
+    "firmwarePolicy": "stable",
+    "deviceTimeoutSeconds": 15,
+    "runTimeoutSeconds": 900,
+    "staggerSeconds": 30,
+    "waitBeforeValidationSeconds": 5,
+    "validationTimeoutSeconds": 180,
+    "conditionType": "always",
+    "conditionValue": "",
+    "failFast": false,
+    "scheduleHours": 0,
+    "scheduleMode": "notify",
+    "automaticUpdates": false,
+    "x": 470,
+    "y": 560,
+    "wires": [
+      [
+        "fn-maint-result-en"
+      ],
+      [
+        "debug-maint-progress-en"
+      ],
+      [
+        "debug-errors-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-fw-check-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Check firmware",
+    "props": [
+      {
+        "p": "action",
+        "v": "check",
+        "vt": "str"
+      },
+      {
+        "p": "allowAll",
+        "v": "true",
+        "vt": "bool"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 500,
+    "wires": [
+      [
+        "maint-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-fw-dry-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Firmware update dry-run",
+    "props": [
+      {
+        "p": "action",
+        "v": "update",
+        "vt": "str"
+      },
+      {
+        "p": "allowAll",
+        "v": "true",
+        "vt": "bool"
+      },
+      {
+        "p": "dryRun",
+        "v": "true",
+        "vt": "bool"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 540,
+    "wires": [
+      [
+        "maint-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-maint-cancel-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Cancel maintenance",
+    "props": [
+      {
+        "p": "action",
+        "v": "cancel",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 580,
+    "wires": [
+      [
+        "maint-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-reboot-dry-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Reboot dry-run",
+    "props": [
+      {
+        "p": "action",
+        "v": "reboot",
+        "vt": "str"
+      },
+      {
+        "p": "allowAll",
+        "v": "true",
+        "vt": "bool"
+      },
+      {
+        "p": "dryRun",
+        "v": "true",
+        "vt": "bool"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 150,
+    "y": 620,
+    "wires": [
+      [
+        "maint-en"
+      ]
+    ]
+  },
+  {
+    "id": "inject-real-update-en",
+    "type": "inject",
+    "z": "tab-shelly-admin-03-en",
+    "name": "REAL update (guarded pilot)",
+    "props": [
+      {
+        "p": "action",
+        "v": "update",
+        "vt": "str"
+      },
+      {
+        "p": "devices",
+        "v": "REPLACE-WITH-EXACT-DEVICE-ID",
+        "vt": "str"
+      },
+      {
+        "p": "dryRun",
+        "v": "false",
+        "vt": "bool"
+      },
+      {
+        "p": "confirm",
+        "v": "true",
+        "vt": "bool"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 170,
+    "y": 660,
+    "wires": [
+      [
+        "fn-update-gate-en"
+      ]
+    ]
+  },
+  {
+    "id": "fn-update-gate-en",
+    "type": "function",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Explicit arming required",
+    "func": "if (flow.get(\"shellyAdminArmRealUpdate\") !== true) {\n    node.warn(\"REAL firmware update blocked: flow.shellyAdminArmRealUpdate is not true.\");\n    return null;\n}\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 470,
+    "y": 660,
+    "wires": [
+      [
+        "maint-en"
+      ]
+    ]
+  },
+  {
+    "id": "fn-maint-result-en",
+    "type": "function",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Maintenance result / firmware workflow",
+    "func": "flow.set(\"shellyAdminMaintenance\", msg.payload);\nmsg.findingsSummary = msg.payload.summaryText;\nmsg.plannedUpdates = msg.payload.plannedUpdates || [];\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 790,
+    "y": 540,
+    "wires": [
+      [
+        "debug-maint-result-en"
+      ]
+    ]
+  },
+  {
+    "id": "debug-maint-result-en",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Firmware/maintenance result",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1070,
+    "y": 540,
+    "wires": []
+  },
+  {
+    "id": "debug-maint-progress-en",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Progress + cancellation state",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 800,
+    "y": 600,
+    "wires": []
+  },
+  {
+    "id": "comment-update-en",
+    "type": "comment",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Real updates remain blocked by default",
+    "info": "For a supervised pilot, first set flow.shellyAdminArmRealUpdate=true and replace the placeholder with exactly one reviewed device. Stable remains the default. An update already accepted by a device cannot be rolled back.",
+    "x": 510,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "id": "http-dashboard-en",
+    "type": "http in",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Shelly Admin Dashboard",
+    "url": "/shelly-admin-dashboard-en",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 180,
+    "y": 780,
+    "wires": [
+      [
+        "fn-dashboard-en"
+      ]
+    ]
+  },
+  {
+    "id": "fn-dashboard-en",
+    "type": "function",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Dashboard HTML",
+    "func": "function esc(value) { return String(value).replace(/[&<>\"']/g, (c) => ({\"&\":\"&amp;\",\"<\":\"&lt;\",\">\":\"&gt;\",\"\\\"\":\"&quot;\",\"'\":\"&#39;\"}[c])); }\nconst data = {\n  inventory: flow.get(\"shellyAdminInventory\") || null,\n  health: flow.get(\"shellyAdminHealth\") || null,\n  findings: flow.get(\"shellyAdminFindings\") || null,\n  alerts: flow.get(\"shellyAdminAlerts\") || null,\n  maintenance: flow.get(\"shellyAdminMaintenance\") || null\n};\nmsg.headers = {\"content-type\":\"text/html; charset=utf-8\",\"cache-control\":\"no-store\"};\nmsg.payload = `<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"refresh\" content=\"15\"><title>Shelly Admin</title><style>body{font:14px system-ui;margin:2rem;background:#111;color:#eee}section{background:#222;padding:1rem;margin:1rem 0;border-radius:.5rem}pre{white-space:pre-wrap;overflow-wrap:anywhere}.ok{color:#7ee787}</style></head><body><h1>Shelly Admin 0.3.0</h1><p class=\"ok\">Refresh: 15 s</p>${Object.entries(data).map(([k,v])=>`<section><h2>${esc(k)}</h2><pre>${esc(JSON.stringify(v,null,2))}</pre></section>`).join(\"\")}</body></html>`;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 470,
+    "y": 780,
+    "wires": [
+      [
+        "http-response-en"
+      ]
+    ]
+  },
+  {
+    "id": "http-response-en",
+    "type": "http response",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Dashboard response",
+    "statusCode": "",
+    "headers": {},
+    "x": 760,
+    "y": 780,
+    "wires": []
+  },
+  {
+    "id": "comment-dashboard-en",
+    "type": "comment",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Dashboard without add-ons: /shelly-admin-dashboard-en",
+    "info": "The HTTP endpoint uses only Node-RED core nodes, shows compact findings, inventory, health/history, alerts and maintenance, and refreshes every 15 seconds. Open the deployed Monitor node to use the authenticated Settings, Current Findings, History and Device Details views. Open the deployed Maintenance node for the protected Settings, Current Status, Device Overview and History views; editor tabs never auto-refresh.",
+    "x": 500,
+    "y": 820,
+    "wires": []
+  },
+  {
+    "id": "debug-findings-en",
+    "type": "debug",
+    "z": "tab-shelly-admin-03-en",
+    "name": "Compact findings summary",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1080,
+    "y": 260,
+    "wires": []
+  }
+]

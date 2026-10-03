@@ -1,1 +1,9 @@
-<script type="text/html" data-help-name="shelly-admin-discovery"><p>Discovers Gen1–Gen4 devices through Gen1 and Gen2+ HTTP APIs. Existing inventory is validated incrementally; full scans find additions.</p><p>Version 0.2.0 keeps a timed-out device in inventory. A successful discovery probe closes one active error, preserves it as <code>lastResolvedError</code> with occurrence/resolution times and reason, and emits one cleared recovery event.</p><p><strong>⚠️ Use at your own risk – no warranty.</strong> Scan only authorized networks.</p></script>
+<script type="text/html" data-help-name="shelly-admin-discovery">
+  <p>Discovers Shelly Gen1–Gen4 devices and maintains the shared persistent inventory.</p>
+  <h3>Input / actions</h3>
+  <p><code>msg.action</code>: <code>start</code>/<code>scan</code>, <code>full</code>, <code>incremental</code>, <code>cancel</code>, or <code>status</code>. Optional <code>msg.mode</code> is <code>initial</code>, <code>incremental</code>, or <code>full</code>; <code>msg.targets</code> temporarily supplies IPs, ranges or CIDRs. Editor Start/Cancel buttons use the same API after deployment.</p>
+  <h3>Outputs</h3>
+  <ol><li>Inventory result with devices, summary, <code>runId</code>, state and lifecycle.</li><li>Progress/lifecycle plus discovered, updated, unreachable and recovered events.</li><li>Structured errors.</li></ol>
+  <p>Lifecycle states are started, running, cancel-requested, cancelled, completed, completed-with-issues and failed. Cancellation aborts active requests, retains completed probes, never marks unstarted targets offline, persists partial consistent state, and does not finalize a cancelled full scan.</p>
+  <p><strong>⚠️ Use at your own risk – no warranty.</strong> Scan only authorized networks. Unofficial community project, not affiliated with Shelly or Allterco.</p>
+</script>
