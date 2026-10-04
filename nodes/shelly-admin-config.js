@@ -9,6 +9,10 @@ const registeredHttpAdmins = new WeakSet();
 
 const CONFIG_DEFAULTS = Object.freeze({
   firmwareCheckTimeoutMs: 2500,
+  scheduledRebootEnabled: false,
+  scheduledRebootIntervalDays: 7,
+  scheduledRebootMode: "maintenance-window",
+  scheduledRebootTime: "03:00",
   rawRetentionHours: 48,
   aggregateRetentionDays: 90,
   bucketMinutes: 60,
@@ -43,6 +47,8 @@ module.exports = function registerShellyAdminConfig(RED) {
     const node = this;
     const migratedConfig = migrateConfig(config);
     const text = (key, parameters, fallback) => translate(RED, node, key, parameters, fallback);
+    node.scheduledRebootTimer = null;
+    node.scheduledRebootStartTimer = null;
 
     function initializationFailed(error) {
       node.initializationError = publicError(error, { operation: "initialize" });
@@ -60,6 +66,15 @@ module.exports = function registerShellyAdminConfig(RED) {
           text: text(`shelly-admin-config.${persistenceKey}`, { count: state.inventoryCount })
         });
         warnAboutPersistence(RED, node, state.persistence);
+        if (migratedConfig.scheduledRebootEnabled === true && !node.scheduledRebootTimer) {
+          const run = () => settleNodeCallback(node, async () => {
+            if (!node.runtime || node.runtime.closed) return;
+            const result = await node.runtime.runScheduledReboots();
+            if (result && result.reason === "maintenance-busy") return;
+          });
+          node.scheduledRebootStartTimer = setTimeout(run, 60000);
+          node.scheduledRebootTimer = setInterval(run, 15 * 60 * 1000);
+        }
       });
       node.runtime.on("runtime-error", (error) => safeNodeCall(node, "error", error && error.message ? error.message : error));
       node.runtime.ready.catch(initializationFailed);
@@ -69,6 +84,8 @@ module.exports = function registerShellyAdminConfig(RED) {
     }
 
     node.on("close", (_removed, done) => settleNodeCallback(node, async () => {
+      if (node.scheduledRebootStartTimer) clearTimeout(node.scheduledRebootStartTimer);
+      if (node.scheduledRebootTimer) clearInterval(node.scheduledRebootTimer);
       if (node.runtime) await node.runtime.close();
     }, done));
   }

@@ -108,6 +108,14 @@
     function filterMatches(device, filter) {
       return filter === "all" || Boolean(device.filters && device.filters[filter]);
     }
+    function formatDuration(seconds) {
+      var value = Number(seconds);
+      if (!Number.isFinite(value)) return "—";
+      var days = Math.floor(value / 86400);
+      var hours = Math.floor((value % 86400) / 3600);
+      var minutes = Math.floor((value % 3600) / 60);
+      return [days ? days + " d" : null, hours ? hours + " h" : null, !days && minutes ? minutes + " min" : null].filter(Boolean).join(" ") || "0 min";
+    }
     function renderDeviceDetail(node, device) {
       var host = $("#node-input-maintenance-device-detail").empty();
       if (!device) {
@@ -121,6 +129,9 @@
       addDefinition(fields, label(node, "devices.ip", "IP address", "IP-Adresse"), display(node, device.ip));
       addDefinition(fields, label(node, "devices.generation", "Generation", "Generation"), display(node, device.generation));
       addDefinition(fields, label(node, "devices.reachability", "Reachability", "Erreichbarkeit"), booleanText(node, device.reachable, "Online", "Online", "Offline", "Offline"));
+      addDefinition(fields, label(node, "devices.uptime", "Current uptime", "Aktuelle Uptime"), device.uptimeSec === null || device.uptimeSec === undefined ? missing(node) : formatDuration(device.uptimeSec));
+      addDefinition(fields, label(node, "devices.scheduledReboot", "Scheduled reboot", "Geplanter Neustart"), device.scheduledReboot ? [device.scheduledReboot.enabled ? (german() ? "Aktiv" : "Enabled") : (german() ? "Aus" : "Disabled"), device.scheduledReboot.due ? (german() ? "Fällig" : "Due") : stateLabel(node, device.scheduledReboot.reason), device.scheduledReboot.dueAt ? timestampText(node, device.scheduledReboot.dueAt) : missing(node)].join(" · ") : missing(node));
+      addDefinition(fields, label(node, "devices.lastScheduledReboot", "Last scheduled reboot", "Letzter geplanter Neustart"), device.scheduledReboot && device.scheduledReboot.lastAttemptAt ? timestampText(node, device.scheduledReboot.lastAttemptAt) + " · " + stateLabel(node, device.scheduledReboot.lastResult) : missing(node));
       addDefinition(fields, label(node, "devices.currentFirmware", "Current firmware", "Aktuelle Firmware"), display(node, device.currentFirmware));
       addDefinition(fields, label(node, "devices.stableFirmware", "Available stable firmware", "Verfügbare Stable-Firmware"), display(node, device.stableFirmware));
       addDefinition(fields, label(node, "devices.betaFirmware", "Available beta firmware", "Verfügbare Beta-Firmware"), display(node, device.betaFirmware));
@@ -147,7 +158,8 @@
         display(node, summary.total) + " " + label(node, "devices.total", "devices", "Geräte"),
         display(node, summary.updateAvailable) + " " + label(node, "filters.updateAvailable", "update available", "Update verfügbar"),
         display(node, summary.error) + " " + label(node, "filters.error", "errors", "Fehler"),
-        display(node, summary.offline) + " offline"
+        display(node, summary.offline) + " offline",
+        display(node, summary.rebootDue) + " " + label(node, "filters.rebootDue", "reboot due", "Neustart fällig")
       ].join(" · ")).appendTo(host);
       if (!devices.length) {
         $("<div>").addClass("shelly-view-state shelly-view-state-empty").text(label(node, "devices.empty", "No devices match this filter.", "Keine Geräte entsprechen diesem Filter.")).appendTo(host);
@@ -161,7 +173,7 @@
         var button = $("<button>").attr("type", "button").attr("data-device-id", device.id).addClass("red-ui-button shelly-maintenance-device-row");
         if (String(device.id) === String(selected)) button.addClass("selected");
         $("<strong>").text(device.name || device.model || device.id || missing(node)).appendTo(button);
-        $("<span>").text([device.ip || missing(node), booleanText(node, device.reachable, "Online", "Online", "Offline", "Offline"), device.currentFirmware || missing(node), device.updateEligible ? label(node, "filters.updateAvailable", "Update available", "Update verfügbar") : stateLabel(node, device.maintenance && device.maintenance.deviceStatus)].join(" · ")).appendTo(button);
+        $("<span>").text([device.ip || missing(node), booleanText(node, device.reachable, "Online", "Online", "Offline", "Offline"), device.currentFirmware || missing(node), device.updateEligible ? label(node, "filters.updateAvailable", "Update available", "Update verfügbar") : device.scheduledReboot && device.scheduledReboot.due ? label(node, "filters.rebootDue", "Reboot due", "Neustart fällig") : stateLabel(node, device.maintenance && device.maintenance.deviceStatus)].join(" · ")).appendTo(button);
         button.on("click.shellyAdmin", function () {
           node._shellyMaintenanceSelectedDeviceId = $(this).attr("data-device-id");
           $(".shelly-maintenance-device-row").toggleClass("selected", false);

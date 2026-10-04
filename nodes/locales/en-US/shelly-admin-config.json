@@ -47,7 +47,11 @@
       "enableRestartPattern": "Restart pattern",
       "enableResources": "Resource trends",
       "enableElectrical": "Electrical observations",
-      "enablePeerComparison": "Peer comparison"
+      "enablePeerComparison": "Peer comparison",
+      "scheduledRebootEnabled": "Enable scheduled reboots",
+      "scheduledRebootIntervalDays": "Time between reboots (days)",
+      "scheduledRebootMode": "Reboot timing",
+      "scheduledRebootTime": "Maintenance-window time"
     },
     "placeholder": {
       "targets": "192.168.1.0/24\n192.168.10.20-40\n10.0.0.8"
@@ -77,7 +81,9 @@
     },
     "option": {
       "stableOnly": "Stable only",
-      "allowBeta": "Allow beta"
+      "allowBeta": "Allow beta",
+      "rebootImmediate": "Immediately after the interval",
+      "rebootMaintenanceWindow": "At the next maintenance window"
     },
     "group": {
       "identity": "Identity and credentials",
@@ -85,7 +91,11 @@
       "history": "History and persistence",
       "baseline": "Device baseline and peer analysis",
       "categories": "Observation categories",
-      "temperatureSafety": "Static temperature safety and policies"
+      "temperatureSafety": "Static temperature safety and policies",
+      "scheduledReboot": "Scheduled reboots"
+    },
+    "help": {
+      "scheduledReboot": "Disabled by default. Choose immediate execution or the next local maintenance window. Default: every 7 days at 03:00. Results and recovery are recorded in maintenance history."
     }
   }
 }

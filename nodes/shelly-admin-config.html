@@ -28,6 +28,7 @@
       monitorConcurrency: 16,
       timeoutMs: 2500,
       firmwareCheckTimeoutMs: 2500,
+      scheduledRebootIntervalDays: 7,
       maintenanceDeviceTimeoutSeconds: 15,
       maintenanceRunTimeoutSeconds: 900,
       fullScanIntervalHours: 168,
@@ -82,6 +83,10 @@
         timeoutMs: { value: 2500, validate: RED.validators.number() },
         firmwareCheckTimeoutMs: { value: 2500, validate: RED.validators.number() },
         firmwarePolicy: { value: "stable" },
+        scheduledRebootEnabled: { value: false },
+        scheduledRebootIntervalDays: { value: 7, validate: RED.validators.number() },
+        scheduledRebootMode: { value: "maintenance-window" },
+        scheduledRebootTime: { value: "03:00" },
         maintenanceDeviceTimeoutSeconds: { value: 15, validate: RED.validators.number() },
         maintenanceRunTimeoutSeconds: { value: 900, validate: RED.validators.number() },
         fullScanIntervalHours: { value: 168, validate: RED.validators.number() },
@@ -126,6 +131,13 @@
         var node = this;
         applyNumericDefaults(node, false);
         var select = $("#node-config-input-contextStore");
+        function updateScheduledRebootVisibility() {
+          var enabled = $("#node-config-input-scheduledRebootEnabled").prop("checked");
+          $("#node-config-scheduled-reboot-options").toggle(enabled);
+          $("#node-config-scheduled-reboot-time-row").toggle(enabled && $("#node-config-input-scheduledRebootMode").val() === "maintenance-window");
+        }
+        $("#node-config-input-scheduledRebootEnabled,#node-config-input-scheduledRebootMode").off("change.shellyAdminReboot").on("change.shellyAdminReboot", updateScheduledRebootVisibility);
+        updateScheduledRebootVisibility();
         var warning = $("#node-config-contextStore-warning");
         var selectedValue = typeof node.contextStore === "string" ? node.contextStore : "";
         var stores = [];
@@ -195,6 +207,14 @@
   <div class="form-row"><label for="node-config-input-timeoutMs"><span data-i18n="shelly-admin-config.label.timeoutMs"></span></label><input type="number" id="node-config-input-timeoutMs" min="250"></div>
   <div class="form-row"><label for="node-config-input-firmwareCheckTimeoutMs"><span data-i18n="shelly-admin-config.label.firmwareCheckTimeoutMs"></span></label><input type="number" id="node-config-input-firmwareCheckTimeoutMs" min="250" max="60000" step="250"></div>
   <div class="form-row"><label for="node-config-input-firmwarePolicy"><span data-i18n="shelly-admin-config.label.firmwarePolicy"></span></label><select id="node-config-input-firmwarePolicy"><option value="stable" data-i18n="shelly-admin-config.option.stableOnly"></option><option value="allow-beta" data-i18n="shelly-admin-config.option.allowBeta"></option></select></div>
+  <h3 data-i18n="shelly-admin-config.group.scheduledReboot"></h3>
+  <div class="form-row"><label for="node-config-input-scheduledRebootEnabled"><span data-i18n="shelly-admin-config.label.scheduledRebootEnabled"></span></label><input type="checkbox" id="node-config-input-scheduledRebootEnabled" style="width:auto"></div>
+  <div id="node-config-scheduled-reboot-options">
+    <div class="form-row"><label for="node-config-input-scheduledRebootIntervalDays"><span data-i18n="shelly-admin-config.label.scheduledRebootIntervalDays"></span></label><input type="number" id="node-config-input-scheduledRebootIntervalDays" min="0.25" max="3650" step="0.25"></div>
+  <div class="form-row" id="node-config-scheduled-reboot-mode-row"><label for="node-config-input-scheduledRebootMode"><span data-i18n="shelly-admin-config.label.scheduledRebootMode"></span></label><select id="node-config-input-scheduledRebootMode"><option value="immediate" data-i18n="shelly-admin-config.option.rebootImmediate"></option><option value="maintenance-window" data-i18n="shelly-admin-config.option.rebootMaintenanceWindow"></option></select></div>
+  <div class="form-row" id="node-config-scheduled-reboot-time-row"><label for="node-config-input-scheduledRebootTime"><span data-i18n="shelly-admin-config.label.scheduledRebootTime"></span></label><input type="time" id="node-config-input-scheduledRebootTime" step="60"></div>
+    <div class="form-tips" data-i18n="shelly-admin-config.help.scheduledReboot"></div>
+  </div>
   <div class="form-row"><label for="node-config-input-maintenanceDeviceTimeoutSeconds"><span data-i18n="shelly-admin-config.label.maintenanceDeviceTimeoutSeconds"></span></label><input type="number" id="node-config-input-maintenanceDeviceTimeoutSeconds" min="1"></div>
   <div class="form-row"><label for="node-config-input-maintenanceRunTimeoutSeconds"><span data-i18n="shelly-admin-config.label.maintenanceRunTimeoutSeconds"></span></label><input type="number" id="node-config-input-maintenanceRunTimeoutSeconds" min="1"></div>
   <div class="form-row"><label for="node-config-input-discoveryConcurrency"><span data-i18n="shelly-admin-config.label.discoveryConcurrency"></span></label><input type="number" id="node-config-input-discoveryConcurrency" min="1"></div>

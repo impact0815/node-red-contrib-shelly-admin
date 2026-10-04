@@ -47,7 +47,11 @@
       "enableRestartPattern": "Neustartmuster",
       "enableResources": "Ressourcentrends",
       "enableElectrical": "Elektrische Beobachtungen",
-      "enablePeerComparison": "Peer-Vergleich"
+      "enablePeerComparison": "Peer-Vergleich",
+      "scheduledRebootEnabled": "Regelmäßige Neustarts aktivieren",
+      "scheduledRebootIntervalDays": "Zeit zwischen Neustarts (Tage)",
+      "scheduledRebootMode": "Zeitpunkt des Neustarts",
+      "scheduledRebootTime": "Uhrzeit des Wartungsfensters"
     },
     "placeholder": {
       "targets": "192.168.1.0/24\n192.168.10.20-40\n10.0.0.8"
@@ -77,7 +81,9 @@
     },
     "option": {
       "stableOnly": "Nur Stable",
-      "allowBeta": "Beta erlauben"
+      "allowBeta": "Beta erlauben",
+      "rebootImmediate": "Sofort nach der eingestellten Zeit",
+      "rebootMaintenanceWindow": "Im nächsten Wartungsfenster"
     },
     "group": {
       "identity": "Identität und Zugangsdaten",
@@ -85,7 +91,11 @@
       "history": "Historie und Persistenz",
       "baseline": "Gerätebaseline und Peer-Analyse",
       "categories": "Beobachtungskategorien",
-      "temperatureSafety": "Statische Temperatursicherheit und Richtlinien"
+      "temperatureSafety": "Statische Temperatursicherheit und Richtlinien",
+      "scheduledReboot": "Regelmäßige Neustarts"
+    },
+    "help": {
+      "scheduledReboot": "Standardmäßig deaktiviert. Wähle den sofortigen Neustart oder das nächste lokale Wartungsfenster. Standard: alle 7 Tage um 03:00 Uhr. Ergebnisse und Recovery werden in der Wartungshistorie gespeichert."
     }
   }
 }

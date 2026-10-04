@@ -271,3 +271,22 @@ npm pack --dry-run
 ```
 
 Release commands, npm publishing, Node-RED installation, Docker smoke tests, checksums, and rollback-oriented verification are in [RELEASE.md](RELEASE.md). Changes are listed in [CHANGELOG.md](CHANGELOG.md) and [RELEASE-NOTES-0.3.0.md](RELEASE-NOTES-0.3.0.md).
+## Scheduled reboots (0.4.0)
+
+Scheduled reboots are disabled by default. Enable **Scheduled reboots** in the shared configuration node and set **Time between reboots (days)**. The default interval is 7 days. A reachable device becomes due when its reported uptime reaches the interval. Due devices are rebooted sequentially, and each device must become reachable again before the next device is processed. Firmware/update maintenance takes precedence; offline devices and devices without uptime telemetry are skipped.
+
+The maintenance device overview shows current uptime, estimated due time, last scheduled reboot and last result. Message control is also available:
+
+```json
+{"action":"scheduled-reboot-check"}
+```
+
+```json
+{"action":"scheduled-reboot-now"}
+```
+
+Scheduled reboots are an operational workaround, not a replacement for diagnosing unstable power, Wi-Fi, firmware or installation conditions.
+
+
+
+Scheduled reboot timing supports **Immediately after the interval** and **At the next maintenance window**. The default window is **03:00 local Node-RED server time**. Maintenance History retains success/failure, validation, recovery time, and uptime before reboot.

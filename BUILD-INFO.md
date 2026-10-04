@@ -1,8 +1,8 @@
 # Build and verification information
 
 Build date: 2026-10-03
-Version: 0.3.0
-Source baseline: complete 0.3.0 project archive; improved before any new commit or version bump
+Version: 0.4.0
+Source baseline: complete 0.4.0 project archive; improved before any new commit or version bump
 Node.js used for local verification: v24.16.0
 npm used for local verification: 11.19.1
 State schema: 2

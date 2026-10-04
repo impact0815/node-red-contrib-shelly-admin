@@ -16,12 +16,28 @@ module.exports = function registerShellyAdminMaintenance(RED) {
     node.running = false;
     node.activeProgress = null;
     node.interval = null;
+    node.scheduledRebootListener = (event) => safeNodeCall(node, "send", [null, output({}, "shelly-admin/maintenance/scheduled-reboot", event), null]);
+    if (node.admin && node.admin.runtime && typeof node.admin.runtime.on === "function") node.admin.runtime.on("scheduled-reboot-event", node.scheduledRebootListener);
 
     async function execute(msg = {}, scheduled = false) {
       if (!node.admin || !node.admin.runtime) {
         const error = { code: "ERR_CONFIG", message: text("shelly-admin-maintenance.error.noConfig") };
         sendError(node, msg, error, text);
         return { accepted: false, error };
+      }
+      if (msg.action === "scheduled-reboot-check") {
+        const status = node.admin.runtime.getScheduledRebootStatus();
+        safeNodeCall(node, "send", [output(msg, "shelly-admin/maintenance/scheduled-reboot/status", status), null, null]);
+        return status;
+      }
+      if (msg.action === "scheduled-reboot-now") {
+        const result = await node.admin.runtime.runScheduledReboots({ onProgress(progress) {
+          node.activeProgress = progress;
+          setProgressStatus(node, progress, text);
+          safeNodeCall(node, "send", [null, output(msg, "shelly-admin/maintenance/progress", progress), null]);
+        } });
+        safeNodeCall(node, "send", [output(msg, "shelly-admin/maintenance/result", result), null, null]);
+        return result;
       }
       let requestedAction;
       try {
@@ -207,6 +223,7 @@ module.exports = function registerShellyAdminMaintenance(RED) {
     }
     node.on("close", (_removed, done) => {
       if (node.interval) clearInterval(node.interval);
+      if (node.admin && node.admin.runtime && node.scheduledRebootListener && typeof node.admin.runtime.off === "function") node.admin.runtime.off("scheduled-reboot-event", node.scheduledRebootListener);
       if (node.running && node.admin && node.admin.runtime) node.admin.runtime.cancel("maintenance", "node-close");
       finish(done);
     });

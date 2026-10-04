@@ -271,3 +271,22 @@ npm pack --dry-run
 ```
 
 Release-, npm-, Node-RED-, Docker-, Prüfsummen- und Git-Befehle stehen in [RELEASE.md](RELEASE.md). Änderungen stehen in [CHANGELOG.md](CHANGELOG.md) und [RELEASE-NOTES-0.3.0.md](RELEASE-NOTES-0.3.0.md).
+## Regelmäßige Neustarts (0.4.0)
+
+Regelmäßige Neustarts sind standardmäßig deaktiviert. Aktiviere **Regelmäßige Neustarts** in der gemeinsamen Konfigurationsnode und setze **Zeit zwischen Neustarts (Tage)**. Der Standardwert beträgt 7 Tage. Ein erreichbares Gerät wird fällig, sobald seine gemeldete Uptime das Intervall erreicht. Fällige Geräte werden nacheinander neu gestartet; jedes Gerät muss wieder erreichbar sein, bevor das nächste verarbeitet wird. Firmware-/Update-Wartung hat Vorrang; Offline-Geräte und Geräte ohne Uptime-Telemetrie werden übersprungen.
+
+Die Geräteübersicht der Wartungsnode zeigt aktuelle Uptime, voraussichtliche Fälligkeit, letzten geplanten Neustart und letztes Ergebnis. Zusätzlich stehen Message-Aktionen zur Verfügung:
+
+```json
+{"action":"scheduled-reboot-check"}
+```
+
+```json
+{"action":"scheduled-reboot-now"}
+```
+
+Regelmäßige Neustarts sind eine betriebliche Gegenmaßnahme und ersetzen nicht die Ursachenanalyse instabiler Stromversorgung, WLAN-Verbindung, Firmware oder Installation.
+
+
+
+Der Neustartzeitpunkt unterstützt **Sofort nach der eingestellten Zeit** und **Im nächsten Wartungsfenster**. Standard ist **03:00 Uhr lokaler Node-RED-Serverzeit**. Die Wartungshistorie speichert Erfolg/Fehler, Validierung, Recovery-Zeit und Uptime vor dem Neustart.

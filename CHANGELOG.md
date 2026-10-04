@@ -1,6 +1,21 @@
 # Changelog
 
+## 0.4.1
+
+- Added immediate and maintenance-window scheduled reboot modes.
+- Added configurable local maintenance-window time, default 03:00.
+- Scheduled reboot success, failure, validation, recovery, and pre-reboot uptime are retained in Maintenance History.
+
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
+
+## 0.4.0
+
+- Added opt-in uptime-based scheduled reboots for every reachable Shelly device.
+- Added `Enable scheduled reboots` and `Time between reboots (days)` to the shared configuration node; the safe defaults are disabled and 7 days.
+- Scheduled reboots run sequentially, wait for device recovery, respect maintenance locks, skip offline devices and devices without uptime, and persist per-device outcomes.
+- Added scheduled-reboot status and lifecycle events plus maintenance device-overview fields for uptime, due time, last attempt and last result.
+- Added `msg.action` values `scheduled-reboot-check` and `scheduled-reboot-now` to the maintenance node.
+- Existing 0.3.0 configurations migrate with concrete defaults and do not enable reboots automatically.
 
 ## [Unreleased]
 
