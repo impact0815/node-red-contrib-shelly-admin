@@ -4,6 +4,11 @@
 
 0.4.0 adds opt-in, uptime-based scheduled reboots. The feature is disabled by default and uses a 7-day interval unless configured otherwise.
 
+Scheduled reboot mode: immediate or next maintenance window.
+Configurable local maintenance-window time, default 03:00.
+Device overview exposes the next scheduled execution and waiting state.
+Maintenance history records scheduled origin, uptime before reboot, success/failure, validation and recovery timestamp.
+
 ## Behavior
 
 - Only reachable devices with available uptime telemetry are eligible.
