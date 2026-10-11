@@ -6,4 +6,6 @@
   <ol><li>Inventory result with devices, summary, <code>runId</code>, state and lifecycle.</li><li>Progress/lifecycle plus discovered, updated, unreachable and recovered events.</li><li>Structured errors.</li></ol>
   <p>Lifecycle states are started, running, cancel-requested, cancelled, completed, completed-with-issues and failed. Cancellation aborts active requests, retains completed probes, never marks unstarted targets offline, persists partial consistent state, and does not finalize a cancelled full scan.</p>
   <p><strong>⚠️ Use at your own risk – no warranty.</strong> Scan only authorized networks. Unofficial community project, not affiliated with Shelly or Allterco.</p>
+  <p>Every successful probe refreshes the configured device name (`Shelly.GetDeviceInfo`/`Sys.GetConfig` on Gen2+, `/settings` on Gen1), so inventory follows renames. Older inventory entries receive the name on their next successful request.</p>
+  <p><strong>Persistent inventory:</strong> a Full scan does not auto-delete powered-off/removed devices. Found now, known but not found, and outside-scope entries are reported separately.</p>
 </script>

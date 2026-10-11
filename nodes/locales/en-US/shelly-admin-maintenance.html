@@ -2,9 +2,12 @@
   <p>Runs read-only firmware checks, guarded dry-runs, sequential firmware updates and reboots with post-action validation.</p>
   <h3>Input / actions</h3>
   <p><code>msg.action</code>: <code>start</code> (configured action), <code>check</code>, <code>update</code>, <code>reboot</code>, <code>cancel</code>, or <code>status</code>. Select exact IDs/IPs/MACs in <code>msg.devices</code>; empty selection fails closed unless <code>allowAll:true</code>. Real update/reboot requires <code>dryRun:false</code> and <code>confirm:true</code>. Stable-only is default; beta requires <code>firmwarePolicy:"allow-beta"</code>.</p>
+  <p>The Device Overview shows each effective device class, active overrides and note/label. Per-device firmware and automatic-reboot policies are resolved before any mutation.</p>
   <h3>Outputs</h3>
   <ol><li>Final result, per-device records, firmware assessment, validation, recovery and completion.</li><li>Start/device/wait/cancel/final progress with <code>runId</code>, state and counts.</li><li>Structured errors with effective timeouts.</li></ol>
   <p>An update first checks every selected device. Progress reports checked, eligible, skipped, updated, failed and timeouts; only policy-eligible candidates enter update, stagger and validation. Dry-run returns <code>plannedUpdates</code> without mutation or waiting. Stable-only devices with no eligible update finish as <code>skipped</code>/<code>no-policy-eligible-update</code>.</p>
   <p>Checks continue after individual errors/timeouts. Update/reboot is serial, records expected restarts and validates recovery. Cancel aborts HTTP requests, validation and stagger waits and prevents new device work. A request already accepted by a device cannot be rolled back; inspect the current-device and termination records.</p>
   <p><strong>⚠️ Use at your own risk – no warranty.</strong> Use dry-run, one pilot device, stable power/network and supervision.</p>
+  <p><strong>Device dropdown and classes:</strong> one accessible dropdown sits directly above details; the separate button list is removed. The bold sort key leads the selected/open entry in Name/Type/IP order, and sort plus type/status filters persist. The type popover remains width-bounded inside the dialog and wraps long choices. Class-wide Check, Update and Reboot accept the selected class and retain Dry-run, confirmation and rolling safeguards.</p>
+  <p>Reachability filters use the latest direct request; Offline notification confirmation remains independently debounced.</p>
 </script>

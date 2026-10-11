@@ -48,7 +48,7 @@ test("Discovery renders count and online parameters in its status", async () => 
     scan: async () => ({
       schema: "shelly-admin.discovery-result/1",
       timestamp: new Date().toISOString(),
-      summary: { inventoryCount: 24, reachable: 24 },
+      summary: { inventoryCount: 24, reachable: 23, foundThisScan: 23, notFoundThisScan: 1 },
       devices: [],
       events: [],
       errors: []
@@ -56,7 +56,7 @@ test("Discovery renders count and online parameters in its status", async () => 
   };
   const node = harness("../nodes/shelly-admin-discovery", catalog("shelly-admin-discovery"), runtime);
   await trigger(node);
-  assert.equal(node.statuses.at(-1).text, "24 devices (24 online)");
+  assert.equal(node.statuses.at(-1).text, "23 found now · 24 stored · 1 known not found");
   assert.doesNotMatch(node.statuses.at(-1).text, /{{/);
 });
 

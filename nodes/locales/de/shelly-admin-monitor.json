@@ -22,7 +22,8 @@
       "allowBeta": "Beta erlauben",
       "current": "Nur aktueller Zustand",
       "transitions": "Nur Übergänge",
-      "currentAndTransitions": "Aktueller Zustand und Übergänge"
+      "currentAndTransitions": "Aktueller Zustand und Übergänge",
+      "noAutomaticUpdates": "Keine automatischen Updates"
     },
     "output": {
       "health": "Gesundheitswerte",
@@ -137,7 +138,57 @@
       "baselines": "Verfügbare Baselines",
       "noBaselines": "Noch keine Baseline verfügbar.",
       "resolvedErrors": "Aufgelöste Fehler",
-      "noResolved": "Keine aufgelösten Fehler gespeichert."
+      "noResolved": "Keine aufgelösten Fehler gespeichert.",
+      "deviceClass": "Geräteklasse",
+      "overrides": "Geräte-Overrides",
+      "inherited": "Keine (geerbt)",
+      "note": "Notiz / Bezeichnung",
+      "currentUptime": "Aktuelle Uptime",
+      "uptimeBeforeReboot": "Uptime vor dem letzten Neustart",
+      "lastReboot": "Letzter Neustart",
+      "rebootType": "Neustartklassifikation",
+      "rebootInterval": "Effektives Neustartintervall",
+      "rebootMode": "Effektiver Neustartmodus",
+      "rebootWindow": "Effektive Wartungsfenster-Uhrzeit",
+      "nextReboot": "Nächster geplanter Neustart",
+      "sortBy": "Sortieren nach",
+      "sortType": "Typ",
+      "sortName": "Name",
+      "sortIp": "IP",
+      "name": "Name",
+      "nameUnset": "Am Gerät ist kein Name gesetzt (oben wird der Ersatzname angezeigt).",
+      "typesAllAction": "Alle",
+      "typesNoneAction": "Keine",
+      "typesAll": "Typen: alle",
+      "typesCount": "Typen: {selected} von {total}",
+      "noTypeMatch": "Keine Geräte entsprechen dem Typfilter.",
+      "reloadAll": "Alle Daten neu laden",
+      "remove": "Entfernen",
+      "reloading": "Alle Gerätedaten werden neu geladen…",
+      "waiting": "Auf das Gerät wird gewartet…",
+      "removing": "Gerät wird entfernt…",
+      "removed": "Gerät wurde aus dem persistenten Inventar entfernt.",
+      "reloaded": "Gerätedaten wurden erfolgreich neu geladen.",
+      "reloadError": "Das Gerät konnte nicht erreicht werden.",
+      "retry": "Erneut versuchen",
+      "waitRetry": "Retry / Warten",
+      "removeConfirm": "Dieses Gerät und seine Betriebshistorie aus dem persistenten Inventar entfernen? Klassen-/Override-Konfiguration bleibt für eine sichere Wiedererkennung erhalten.",
+      "inventoryState": "Inventarstatus",
+      "inventoryStored": "Gespeicherter persistenter Eintrag",
+      "lastScan": "Letzter Inventarscan",
+      "scanFound": "In diesem Scan gefunden",
+      "scanNotFound": "In diesem Scan nicht gefunden",
+      "scanNotScanned": "Außerhalb des Scanbereichs / nicht verarbeitet"
+    },
+    "origin": {
+      "global": "allgemein",
+      "class": "Klasse",
+      "device": "Gerät"
+    },
+    "rebootType": {
+      "planned": "Geplant",
+      "requested": "Angefordert",
+      "unexpected": "Unerwartet"
     }
   }
 }

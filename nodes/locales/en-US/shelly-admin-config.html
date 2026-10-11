@@ -4,4 +4,7 @@
   <p>Old 0.1.x configuration nodes are migrated without recreation. Missing or empty numeric fields are shown with documented defaults and saved as numbers; an empty firmware-check timeout becomes 2500 ms.</p>
   <p>Select a <code>localfilesystem</code> Context store for durable state. Schema-1 inventory/history/error/temperature/anomaly data is migrated section by section; a damaged optional section does not discard a valid inventory.</p>
   <p><strong>⚠️ Use at your own risk – no warranty.</strong> Trends are not guaranteed failure predictions and do not replace professional electrical, fire or manufacturer protection. Automatic shutdown requires exact-device opt-in and action mode; outputs are never automatically re-enabled.</p>
+  <p><strong>Device Settings (0.5.1):</strong> device override → class → general. Inventory loads only on tab selection or Refresh. Each override can return to Inherit. Observations/events expose the effective <code>notify</code> and <code>deviceClass</code>.</p>
+  <p><strong>Device dropdown and classes (0.5.1):</strong> one accessible dropdown is followed by details; the separate button list is removed. The bold sort key is first in Name/Type/IP order; sort and type/model filters persist. The width-bounded type popover wraps long choices inside the dialog. The selected class shows its effective reboot window, assigned devices and each next reboot.</p>
+  <p>Inventory details distinguish persistent storage, latest direct reachability and last-scan evidence.</p>
 </script>

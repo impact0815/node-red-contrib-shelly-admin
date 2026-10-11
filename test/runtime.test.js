@@ -5,14 +5,16 @@ const test = require("node:test");
 const { evaluateCondition, normalizeConfig, parsePolicies, selectDevices } = require("../lib/runtime");
 
 const devices = [
-  { id: "a", ip: "10.0.0.1", mac: "AA", health: { restartRequired: true, uptimeSec: 5000, ramFree: 10, ramSize: 100 }, firmware: { available: { hasUpdate: true } } },
-  { id: "b", ip: "10.0.0.2", mac: "BB", health: { restartRequired: false } }
+  { id: "a", ip: "10.0.0.1", mac: "AA", deviceClass: "poor-connection", health: { restartRequired: true, uptimeSec: 5000, ramFree: 10, ramSize: 100 }, firmware: { available: { hasUpdate: true } } },
+  { id: "b", ip: "10.0.0.2", mac: "BB", deviceClass: "standard", health: { restartRequired: false } }
 ];
 
 test("maintenance selection fails closed unless all is explicit", () => {
   assert.deepEqual(selectDevices(devices, "", false), []);
   assert.equal(selectDevices(devices, "", true).length, 2);
   assert.deepEqual(selectDevices(devices, ["10.0.0.2"], false).map((device) => device.id), ["b"]);
+  assert.deepEqual(selectDevices(devices, "", false, "poor-connection").map((device) => device.id), ["a"]);
+  assert.deepEqual(selectDevices(devices, ["a", "b"], false, "standard").map((device) => device.id), ["b"], "explicit selectors and class selectors form a safe intersection");
 });
 
 test("evaluates supported reboot and update conditions", () => {

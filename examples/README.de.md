@@ -8,6 +8,7 @@ Alle JSON-Dateien sind vollständige Node-RED-Flows: **Menü → Importieren →
 | `02-safe-maintenance.json` | Kompakter Einstieg für abgesicherte Wartung |
 | `03-complete-operations-en.json` | Vollständiger englischer Betriebsflow mit Actions, Abbruch, Status, Benachrichtigungsrouting, Dashboard, Debugging, Firmware, Recovery, Temperatur, Anomalien und Trends |
 | `04-kompletter-betrieb-de.json` | Funktional gleichwertiger vollständiger deutscher Flow |
+| `05-notify-routing.json` | Minimaler Routing-Flow, der nur Observations mit `notify === true` weitergibt; den letzten Node mit einem freigegebenen Signal-Sender verbinden |
 
 ## Ablauf des vollständigen Flows
 
@@ -19,3 +20,8 @@ Alle JSON-Dateien sind vollständige Node-RED-Flows: **Menü → Importieren →
 6. **Recovery und Sicherheit:** Recovery-Lifecycle, Temperaturwarnungen, automatische Aktionsdatensätze, Firmware-Observations, Neustartmuster, Ressourcen-/elektrische Anomalien sowie Latenz-/Temperaturtrends werden an benannte Debug-Nodes geroutet.
 
 Die Start-/Abbrechen-Schaltflächen im Editor funktionieren nach dem Deploy und entsprechen Nachrichten mit `msg.action`.
+
+
+## 0.5.0: Uptime- und Beta-Hinweis-Felder
+
+Alle Beispiel-Config-Nodes speichern `showBetaFirmwareNotices:false`; nur aktivieren, wenn je Gerät/Beta-Version ein einmaliger Beta-only-Hinweis gewünscht ist. Warning-/Critical-Observations liefern `uptimeSec`, `uptimeText` und `uptimeTextDe`. Die vollständigen englischen/deutschen Flows und `05-notify-routing.json` erzeugen Benachrichtigungstext mit menschenlesbarer Uptime und behalten die Schranke `notify === true` bei.

@@ -5,6 +5,7 @@ const test = require("node:test");
 const { assessFirmware } = require("../lib/firmware");
 const { DeviceHistory } = require("../lib/history");
 const { Inventory } = require("../lib/inventory");
+const { DeviceSettingsResolver } = require("../lib/device-settings");
 const { ShellyAdminRuntime } = require("../lib/runtime");
 
 function device(id = "device-1") {
@@ -57,6 +58,28 @@ test("a second maintenance trigger returns ERR_BUSY while progress remains inspe
   assert.equal(runtime.activeMaintenanceRun, null);
   assert.ok(progress.some((item) => item.phase === "checking" && item.total === 1));
   assert.equal(progress.at(-1).final, true);
+});
+
+test("deviceClass selects the complete class and retains destructive confirmation and dry-run gates", async () => {
+  const seen = [];
+  const runtime = runtimeWith({
+    checkForUpdate: async (current) => { seen.push(current.id); return { checkedAt: new Date().toISOString(), available: null }; },
+    reboot: async () => ({}),
+    waitReachable: async (current) => current
+  }, [device("device-1"), device("device-2")]);
+  runtime.deviceSettings = new DeviceSettingsResolver(runtime.config, {}, {
+    "device-1": { deviceClass: "poor-connection", overrides: {} },
+    "device-2": { deviceClass: "standard", overrides: {} }
+  });
+
+  const checked = await runtime.maintain({ action: "check", deviceClass: "poor-connection" });
+  assert.deepEqual(seen, ["device-1"]);
+  assert.equal(checked.deviceClass, "poor-connection");
+  assert.equal(checked.summary.selected, 1);
+
+  await assert.rejects(runtime.maintain({ action: "reboot", deviceClass: "poor-connection", dryRun: false }), (error) => error.code === "ERR_CONFIRMATION_REQUIRED");
+  const dryRun = await runtime.maintain({ action: "reboot", deviceClass: "poor-connection", dryRun: true });
+  assert.equal(dryRun.results[0].status, "dry-run");
 });
 
 test("firmware checks time out, finish all devices and always release the maintenance lock", async () => {

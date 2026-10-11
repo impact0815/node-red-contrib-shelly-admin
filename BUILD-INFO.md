@@ -1,45 +1,38 @@
 # Build and verification information
 
-Build date: 2026-10-03
-Version: 0.4.0
-Source baseline: complete 0.4.0 project archive; improved before any new commit or version bump
+Build date: 2026-10-10
+Version: 0.5.1
+Source baseline: verified complete 0.5.0 project archive (`80218d5a8fea1073638ea795c5e3121c40b5d93042d0d3cbe4005a8db3e2519c`)
 Node.js used for local verification: v24.16.0
 npm used for local verification: 11.19.1
-State schema: 2
+State schema: 2 with inventory schema 3 (older inventories migrate with `name: null`)
 History schema: 2
-Observation schema: `shelly-admin.observation/2`
+Observation schema: `shelly-admin.observation/2` (additive `notify` and `deviceClass`)
 Run lifecycle schema: `shelly-admin.lifecycle/1`
+Device-settings schema: `shelly-admin.device-settings/1`
 
 Completed checks:
 
-- dependency-free source/JSON lint: passed (64 source files and JSON examples validated);
-- Node.js test runner: 107 passed, 0 failed, 0 skipped, 0 cancelled;
-- experimental coverage: 88.68% lines, 67.26% branches, 89.19% functions;
-- inherited 0.2.0 discovery, persistence, history, baseline, lifecycle, firmware, recovery, anomaly, Stable/Beta, temperature, Gen1/Gen2+ and migration regressions: passed;
-- unified node-specific action validation and unsupported-action errors: passed;
-- editor Start/Cancel controls and authenticated deployed-node action endpoint: passed;
-- message status, cancel and Monitor enable/disable control: passed;
-- discovery cancellation: active HTTP abort, no new targets, completed-probe retention, unprocessed count and no false full-scan completion: passed;
-- monitor cancellation: active HTTP abort, completed-data retention, no false unreachable record for unstarted devices and no fleet anomaly evaluation on an incomplete sample: passed;
-- maintenance cancellation through the public runtime API, lock release, lifecycle and auditable termination: passed;
-- AbortSignal destruction of a live pending HTTP request: passed;
-- firmware timeout propagation, per-device continuation, guarded update/reboot, validation and recovery regressions: passed;
-- normal 0 W periods, cyclic off/load profiles, first activation after zero history, sustained active-load deviation and correlated electrical de-duplication regressions: passed;
-- all-selected firmware pre-check, policy-eligible-only mutation, immediate no-policy-eligible-update skips, candidate-scoped progress and no-wait dry-run planning regressions: passed;
-- functional four-tab Monitor editor navigation, click/panel switching, refresh calls, loading/error/empty/finding rendering and English/German labels: passed;
-- functional four-tab Maintenance editor navigation, Current Status, policy-aware Device Overview, filters, History, loading/error/empty rendering and English/German labels: passed;
-- no periodic Monitor/Maintenance editor refresh, first-selection/reopen/manual-refresh request rules and scroll/filter/device-selection preservation: passed;
-- grouped human-readable findings, separate resource/electrical groups, severity/lifecycle styling, additive summaries/cards and read-protected editor endpoint regressions: passed;
-- bounded persisted finding transitions and maintenance runs plus safe Device Details/Maintenance snapshots, including missing-value-versus-zero handling and credential-leak checks: passed;
-- complete English/German example JSON, wire targets, required node coverage and embedded Function-node syntax: passed;
-- English/German locale key parity and guarded runtime/editor translation: passed;
-- `npm pack --dry-run`: passed; required docs, examples and release notes present;
-- full project ZIP integrity and content checks: passed;
-- all four Node-RED module registrations and protected Admin routes: passed.
+- dependency-free source/JSON lint: passed (73 source files and JSON examples validated);
+- Node.js test runner: 159 passed, 0 failed, 0 skipped, 0 cancelled;
+- resolution precedence, built-in class presets, per-field inheritance reset and effective-origin metadata: passed;
+- consecutive-failure Offline confirmation and minimum-duration Recovery suppression: passed;
+- `notify` and `deviceClass` metadata, disabled firmware policy and notification-routing example: passed;
+- per-device monitoring enablement, due polling interval and history-retention metadata: passed;
+- 0.4.x configuration/state migration and concrete new numeric defaults: passed;
+- lazy Device Settings editor tab, manual refresh, protected no-store inventory endpoint and safe response fields: passed;
+- Monitor Device Details and Maintenance Device Overview class/override metadata: passed;
+- custom device dropdown rendering, sort-dependent field order with leading bold key, keyboard/outside-click behavior, width-bounded/wrapping type-filter popovers, persisted model/type filter, selection retention and removed button-list regression: passed;
+- `msg.deviceClass`, class-wide Check/Update/Reboot safety gates and class maintenance-window membership display: passed;
+- persistent inventory/current-scan separation, direct reachability, full-scan scope, device reload/wait/remove, persistence-error separation and transactional removal rollback: passed;
+- inherited discovery, persistence, history, baselines, lifecycle, recovery, anomaly, temperature, firmware and scheduled-reboot regressions: passed;
+- English/German locale key parity and Node help coverage: passed;
+- `npm pack --dry-run`: passed with no warnings;
+- clean project ZIP integrity and exclusion checks: performed during release build.
 
 Environment limitations:
 
-- Docker CLI/daemon was not installed in the build environment, so the supplied Docker smoke-test commands were not executed here.
-- No hardware-in-the-loop Shelly test was run from this build container. The confirmed 0.2.0 behavior and existing practical-test-derived regressions remain covered, but device APIs and firmware vary.
+- Docker CLI/daemon was not used for this build.
+- No hardware-in-the-loop Shelly test was run from this container; device API and firmware behavior can vary.
 
-Operational recommendation: use Stable-only, dry-run, backups, exact pilot selection, stable power/network, authorized scan ranges and supervised rollout. Cancellation prevents new work and aborts cooperative requests/waits, but cannot undo an update or reboot already accepted by a device.
+Operational recommendation: use Stable-only, dry-run, backups, exact pilot selection, stable power/network, authorized scan ranges and supervised rollout. Device/class settings affect automation and notification metadata but do not replace manufacturer protections or professional electrical safety measures.

@@ -4,6 +4,26 @@
 
 Node-RED nodes for local Shelly fleet administration: discovery, persistent inventory, firmware policy, guarded maintenance, historical monitoring, device baselines, cautious peer comparison, and explicit observation lifecycles. Shelly generations 1–4 are supported through the Gen1 and Gen2+ HTTP API families. MQTT is optional and is not a package dependency.
 
+## Device names and lists in 0.5.1
+
+Discovery and Monitor now retain the name configured on each Shelly (`Shelly.GetDeviceInfo.name` or `Sys.GetConfig.device.name` on Gen2+, `/settings.name` on Gen1) and follow device-side renames. Existing inventory entries migrate with `name: null` and are filled by the next successful request.
+
+Monitor Device Details, Maintenance Device Overview and Config Device Settings use one slim custom device dropdown followed directly by the detail view; the separate all-device button list has been removed. Entries put the active sort key first and bold: `Name · Type · IP`, `Type · Name · IP`, or `IP · Name · Type`. Fallback names remain muted italics; long values use ellipsis plus full-text tooltips. Keyboard control (arrows, Enter, Escape), outside-click closing and no horizontal scrollbar remain supported. Persistent **Sort by: Type / Name / IP** affects only this dropdown; Name is the default and IPv4 sorting is numeric. A persistent multi-select model/type filter offers **All/None**, reports `Types: all` or `Types: n of m`, and opens a width-bounded, wrapping popover that remains inside the dialog; Maintenance status filters remain and combine with it. Manual refresh preserves sort, type filter, status filter, selection and scroll, with no editor auto-refresh. Detail views show a name heading and Name field. Observations/events carry `device.name`, and human summaries prefer it for downstream notifications.
+
+Every inventoried device now resolves settings in the strict order **device override → device class → general configuration**. Existing devices migrate to **Standard** with no overrides. The built-in classes are Standard, Critical, Test device, and Poor connection; their presets can be refined, and each device override can independently return to inheritance.
+
+The Config node's **Device Settings** tab loads inventory only when opened or when **Refresh** is clicked. It edits class defaults—including Standard—and per-device overrides and shows every effective value with its general/class/device origin. Reboot enablement, interval, immediate/maintenance-window mode, and maintenance-window time are independently inheritable at device → class → general level. For the selected class it also shows the effective maintenance window, every assigned device and that device's next planned reboot. Per-device details retain current/pre-reboot uptime and reboot classification. Missing telemetry is **Not available**, never synthetic zero.
+
+All observations and emitted device events add `notify` and `deviceClass`. Existing schema identifiers and all three output positions are unchanged. Every Warning/Critical observation and finding also carries `uptimeSec`, `uptimeText`, and `uptimeTextDe`; its human summary includes current uptime or **Not available**. A notification flow can filter with `item.notify === true` and forward `summaryText`. See `examples/05-notify-routing.json`.
+
+## Inventory evidence and direct device actions in 0.5.1
+
+A Full scan keeps persistent inventory entries by design: a powered-off or physically removed Shelly may still be stored so identity, history and policy are not destroyed automatically. Current scan evidence is now separate: `foundDevices`, `foundThisScan`, `notFoundThisScan`, `inventoryNotScanned`, and each device's `lastScan.status` distinguish **found now**, **known but not found**, and **outside the current scan scope**. Public/editor reachability follows the latest direct probe immediately; `confirmedOffline` remains the debounced notification state.
+
+Monitor **Device Details** adds **Reload all data** for a fresh device probe. If unreachable, the view provides Retry, bounded **Retry / Wait**, and confirmed **Remove**. Remove purges the persistent inventory entry and operational history/state. Class and override configuration is intentionally retained for safe rediscovery; remove it separately in Config Device Settings if permanent policy deletion is wanted.
+
+A code- and test-based assessment, confirmed fixes, remaining risks and future architecture recommendations are in [docs/ARCHITECTURE-REVIEW-0.5.1.md](docs/ARCHITECTURE-REVIEW-0.5.1.md).
+
 ## Safety and scope
 
 > **⚠️ Use at your own risk – no warranty.** This is an unofficial community project and is not affiliated with, endorsed by, or supported by Shelly or Allterco. It is supplied “as is”.
@@ -21,14 +41,14 @@ Node-RED nodes for local Shelly fleet administration: discovery, persistent inve
 | `shelly-admin-monitor` | Polling, history, observations and temperature safety | Health · alerts · errors |
 | `shelly-admin-maintenance` | Firmware checks, dry-runs, rolling updates and conditional reboots | Result · per-device progress · errors |
 
-Version 0.3.0 keeps the existing node type names, three-output wiring, Node.js 18+/Node-RED 3.1+ support, Gen1–Gen4 normalization, Context-store persistence, Stable-only default firmware policy, optional beta policy, structured errors, and temperature safety behavior. It adds a dual operation model: every operational command is available through `msg.action` and through Start/Cancel controls in the deployed node's editor dialog.
+Version 0.5.1 keeps the existing node type names, three-output wiring, Node.js 18+/Node-RED 3.1+ support, Gen1–Gen4 normalization, Context-store persistence, structured errors, temperature safety, and the dual `msg.action`/editor-control operation model.
 
 ## Unified action and lifecycle API
 
 | Node | Start/run actions | Control actions |
 |---|---|---|
 | Discovery | `start`, `scan`, `full`, `incremental` | `cancel`, `status` |
-| Monitor | `start`, `poll`, `check` | `cancel`, `status`, `enable`, `disable` |
+| Monitor | `start`, `poll`, `check` | `cancel`, `status`, `enable`, `disable`, `refresh-device`, `wait-device`, `remove-device` |
 | Maintenance | `start`, `check`, `update`, `reboot` | `cancel`, `status` |
 
 Example:
@@ -49,14 +69,14 @@ From the Node-RED user directory:
 
 ```bash
 cd ~/.node-red
-npm install @impact0815/node-red-contrib-shelly-admin@0.3.0
+npm install @impact0815/node-red-contrib-shelly-admin@0.5.1
 ```
 
 From the supplied package:
 
 ```bash
 cd ~/.node-red
-npm install /path/to/impact0815-node-red-contrib-shelly-admin-0.3.0.tgz
+npm install /path/to/impact0815-node-red-contrib-shelly-admin-0.5.1.tgz
 ```
 
 Restart Node-RED and add one `shelly-admin-config` node plus the required discovery, monitor, and maintenance nodes.
@@ -66,8 +86,9 @@ Restart Node-RED and add one `shelly-admin-config` node plus the required discov
 Targets accept CIDR networks, full or short IPv4 ranges, individual addresses, and comma/newline-separated lists. Automatic interface discovery is limited by the minimum prefix (default `/24`) and total address cap (default `4096`). Scan only authorized networks.
 
 - Gen1: `/shelly`, `/settings`, `/status`
-- Gen2–Gen4: `/shelly`, `Shelly.GetDeviceInfo`, `Shelly.GetStatus`
+- Gen2–Gen4: `/shelly`, `Shelly.GetDeviceInfo`, `Sys.GetConfig`, `Shelly.GetStatus`
 - Stable-only is the default firmware policy; beta must be explicitly allowed.
+- **Show beta firmware notices** is off by default. When enabled, a beta-only notice opens once per device and beta version; repeated monitor runs do not re-notify. Beta availability remains machine-readable when notices are off. Stable-update behavior is unchanged.
 - `firmwareCheckTimeoutMs` defaults to `2500`, accepts `250–60000`, and is passed unchanged to the complete check and all related requests.
 - One device timeout/error is recorded and does not stop the remaining read-only firmware checks.
 - An update run has two phases: it first checks every selected device, then sends update/restart/validation work only to policy-eligible devices. Under Stable-only, beta-only or no-update devices immediately finish as `skipped` with `no-policy-eligible-update`.
@@ -154,13 +175,15 @@ Latency trends require sustained deviation from the own baseline. When enough de
 
 Temperature trends are separate from static `warning`, `critical`, and hardware-overtemperature safety classification. Simultaneous power is included as context when available. A temperature trend alone never triggers shutdown.
 
-Restart analysis records uptime decreases and a bounded restart history. Firmware updates and requested maintenance reboots create expectation markers. Unexpected repeated restarts are reported separately; counter reset, missing uptime, and API uncertainty remain explicit.
+Restart analysis records uptime decreases and a bounded persistent restart history. Scheduled reboots are classified as `planned`, manual/firmware restart requests as `requested`, and unmarked uptime decreases as `unexpected`. Each event retains estimated reboot/detection times, post-reboot uptime, and uptime before reboot. Unexpected repeated restarts remain separate; counter reset, missing uptime, and API uncertainty stay explicit.
 
 Resource analysis skips unsupported metrics and requires sustained RAM/filesystem change. Electrical analysis is deliberately conservative and activity-aware. Zero and near-zero power phases are normal operating states, whether isolated, long, cyclic, daily/nightly, or frequently alternating with load. Active-load values are compared only with a sufficiently populated active-state baseline; a first transition from historical 0 W to load is not enough. Electrical triggers require more repeated confirmations than general trends. Correlated `powerW` and `energyRateWhPerHour` findings are consolidated. Counter decreases still require repetition, and every remaining finding explicitly allows usage, reset, data-gap, firmware, or replacement explanations rather than asserting a defect.
 
 ## Observation Schema 2
 
 Observations use `shelly-admin.observation/2` and are backward-friendly JSON objects. Lifecycle values are:
+
+Version 0.5.1 retains the compatible fields `notify` (the effective notification decision) and `deviceClass`. Offline is opened only after the effective consecutive-failure threshold. Failures below it remain visible as structured technical errors and persisted incident counts but do not create Offline or Recovery observations. Recovery is emitted only after the effective minimum confirmed-offline duration.
 
 - `opened` — condition became active;
 - `present` — still active, no new alert transition;
@@ -185,7 +208,7 @@ The normal Monitor edit dialog now contains four visible, keyboard-focusable vie
 - **Settings** — all existing monitor configuration and Start/Cancel controls;
 - **Current Findings** — the last runtime-known findings, grouped as Firmware, Temperature, Offline/Recovery, Trends, Resources, and Electrical observations;
 - **History** — the latest 50 human-readable finding states/transitions, newest first, including `opened`, `updated`, `present`, `cleared`, and Recovery, without dumping raw time-series data;
-- **Device Details** — an inventory selector plus identity, model, generation, IP, reachability, firmware, temperature, latency, resources, active findings, resolved errors, and available median/MAD baselines.
+- **Device Details** — an inventory selector plus identity, model, generation, IP, reachability, firmware, temperature, latency, resources, current/pre-reboot uptime, last reboot time/classification, effective reboot timing with origin, next planned reboot, active findings, resolved errors, and available median/MAD baselines.
 
 Each result view loads only when it is selected for the first time in the currently open dialog, after the dialog is reopened, or when its visible **Refresh** button is pressed. There is no periodic editor refresh, so tab changes do not repeatedly reset reading position or selection. Manual refresh preserves scroll position and the selected device where possible. Loading, error, and empty states are visible. Each finding card shows severity, a plain-language title, device/model, IP, explanation, current value, baseline or firmware target, lifecycle, and time. Critical, Warning, Info, and Cleared have separate visual treatments. Missing device measurements are rendered as **Not available**, never as zero.
 
@@ -197,7 +220,7 @@ The editor uses these read-only Admin routes:
 
 All three routes require the Node-RED permission `shelly-admin.read`, disable response caching, and return allow-listed operational fields only—never credentials. The History and current-finding views are persisted with the existing Context state, bounded to 200 human-readable entries.
 
-The Maintenance edit dialog provides the matching **Settings**, **Current Status**, **Device Overview**, and **History** views. Device Overview shows device name/model, device ID, IP, generation, reachability, current firmware, Stable/Beta availability under the configured policy, update eligibility, last firmware-check status/time, last update time/result, last successful update, last failed attempt, errors/timeouts, post-update recovery, and active/completed runs. Filters cover **Update available**, **Error**, **Offline**, **Successfully updated**, and **Skipped**. Missing values are shown as **Not available**. The same first-open/manual-refresh rule applies and preserves filter, selected device, and scroll position where possible.
+The Maintenance edit dialog provides **Settings**, **Current Status**, **Device Overview**, and **History**. Device Overview additionally shows current uptime, uptime before the last reboot, last reboot time/classification, effective reboot interval/mode/window with origin, and the next planned reboot. Existing policy-aware firmware, update, error, recovery, run fields and filters remain. Missing values are **Not available**. Class-wide firmware checks, firmware updates and reboots are available from dedicated editor buttons and through `msg.deviceClass`. A class selector may be used alone or as a safe intersection with exact `msg.devices`; real update/reboot still requires `dryRun:false` plus confirmation and remains rolling/sequential.
 
 Maintenance uses additional read-only, no-store routes protected by `shelly-admin.read`:
 
@@ -207,7 +230,7 @@ Maintenance uses additional read-only, no-store routes protected by `shelly-admi
 
 Completed maintenance summaries and their allow-listed per-device result fields are persisted as an additive bounded history (100 runs). Credentials and arbitrary private device payloads are not included.
 
-The three existing outputs remain Health, Alerts, and Errors. Existing Observation Schema 2 objects remain unchanged. Health and Alert payloads add `summaryText`, `summaryTextDe`, `humanSummary`, `findingsSummary`, and grouped `cards`. Canonical card groups are `firmware`, `temperature`, `recovery`, `trends`, `resources`, and `electrical`; the previous aggregate `cards.anomalies` remains as a compatibility alias. Node status reports policy-eligible firmware updates, temperature warnings, offline devices, actionable anomalies, and critical states. Beta-only information under Stable-only remains Info and is not counted as a warning; ordinary zero-power phases and normal load changes do not become electrical problem findings.
+The three existing outputs remain Health, Alerts, and Errors; Observation Schema 2 receives additive fields only. Warning/Critical observations, temperature events and cards include machine-readable and bilingual human uptime. With beta notices disabled, beta-only availability creates no observation, finding, status count or notification; enabled, it opens once per device/version. Stable updates, ordinary zero-power phases and normal load changes retain their prior behavior.
 
 ## Temperature safety
 
@@ -257,6 +280,7 @@ Import one JSON file from the `examples/` directory; no manual node assembly is 
 - `02-safe-maintenance.json` — compact maintenance starter;
 - `03-complete-operations-en.json` — complete English operation, action, cancellation, dashboard, notification, debug, firmware, recovery, temperature, anomaly and trend flow;
 - `04-kompletter-betrieb-de.json` — functionally equivalent German flow.
+- `05-notify-routing.json` — minimal notification route that forwards only observations with `notify === true` and builds `notificationText` including human-readable uptime.
 
 The full flows use only these Shelly Admin nodes and Node-RED core nodes. Their browser dashboard is exposed at `/shelly-admin-dashboard-en` or `/shelly-admin-dashboard-de` and refreshes every 15 seconds. Notification routing writes transition warnings to the runtime log and Debug sidebar and is intentionally easy to extend with an approved e-mail, Teams, MQTT, or webhook node. Real firmware update is double-gated by an explicit flow-context arm flag and an exact placeholder device ID; read-only check and dry-run paths work immediately after target/configuration review. See [examples/README.md](examples/README.md).
 
@@ -270,12 +294,12 @@ npm run test:coverage
 npm pack --dry-run
 ```
 
-Release commands, npm publishing, Node-RED installation, Docker smoke tests, checksums, and rollback-oriented verification are in [RELEASE.md](RELEASE.md). Changes are listed in [CHANGELOG.md](CHANGELOG.md) and [RELEASE-NOTES-0.3.0.md](RELEASE-NOTES-0.3.0.md).
-## Scheduled reboots (0.4.0)
+Release commands, npm publishing, Node-RED installation, Docker smoke tests, checksums, and rollback-oriented verification are in [RELEASE.md](RELEASE.md). Changes are listed in [CHANGELOG.md](CHANGELOG.md) and [RELEASE-NOTES-0.5.1.md](RELEASE-NOTES-0.5.1.md).
+## Scheduled reboots and uptime history (0.5.0)
 
 Scheduled reboots are disabled by default. Enable **Scheduled reboots** in the shared configuration node and set **Time between reboots (days)**. The default interval is 7 days. A reachable device becomes due when its reported uptime reaches the interval. Due devices are rebooted sequentially, and each device must become reachable again before the next device is processed. Firmware/update maintenance takes precedence; offline devices and devices without uptime telemetry are skipped.
 
-The maintenance device overview shows current uptime, estimated due time, last scheduled reboot and last result. Message control is also available:
+The scheduler resolves enablement, interval, mode, and time independently for every device as device override → class → general. Monitor Device Details, Maintenance Device Overview, and Config Device Settings show current uptime, uptime before the last reboot, reboot time/classification, effective reboot values with origin, and `scheduledFor` as the next planned reboot. Message control is also available:
 
 ```json
 {"action":"scheduled-reboot-check"}

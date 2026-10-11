@@ -21,7 +21,9 @@
       "firmwarePolicy": "Firmware policy",
       "deviceTimeoutSeconds": "Update/reboot device timeout (s)",
       "runTimeoutSeconds": "Run timeout (s)",
-      "manualControl": "Manual control"
+      "manualControl": "Manual control",
+      "deviceClass": "Device class selector",
+      "classActions": "Class actions"
     },
     "option": {
       "check": "Check firmware",
@@ -35,7 +37,8 @@
       "notify": "Notify / check only",
       "auto": "Automatic rolling update",
       "stableOnly": "Stable only",
-      "allowBeta": "Allow beta"
+      "allowBeta": "Allow beta",
+      "noAutomaticUpdates": "No automatic updates"
     },
     "output": {
       "result": "final result",
@@ -85,7 +88,10 @@
     "button": {
       "start": "Start configured action",
       "cancel": "Cancel",
-      "refresh": "Refresh"
+      "refresh": "Refresh",
+      "classCheck": "Check class",
+      "classUpdate": "Update class",
+      "classReboot": "Reboot class"
     },
     "tabs": {
       "settings": "Settings",
@@ -108,10 +114,12 @@
     "notify": {
       "noRun": "No active run",
       "sent": "Maintenance action requested",
-      "deploy": "Deploy the node before using editor controls."
+      "deploy": "Deploy the node before using editor controls.",
+      "selectClass": "Select a device class first."
     },
     "confirm": {
-      "destructive": "Run the selected maintenance action on the deployed node? This can cause outages."
+      "destructive": "Run the selected maintenance action on the deployed node? This can cause outages.",
+      "classDestructive": "Run this maintenance action for every device in the selected class? This can cause outages."
     },
     "statusView": {
       "active": "Maintenance run active",
@@ -135,7 +143,7 @@
       "noSelection": "No matching device is selected.",
       "loading": "Loading device overview…",
       "loadError": "Could not load the device overview.",
-      "model": "Device name / model",
+      "model": "Model",
       "id": "Device ID",
       "ip": "IP address",
       "generation": "Generation",
@@ -153,7 +161,23 @@
       "lastFailed": "Last failed update attempt",
       "error": "Error / timeout",
       "recovery": "Recovery after update",
-      "maintenance": "Maintenance run"
+      "maintenance": "Maintenance run",
+      "deviceClass": "Device class",
+      "overrides": "Device overrides",
+      "inherited": "None (inherited)",
+      "note": "Note / label",
+      "uptime": "Current uptime",
+      "uptimeBeforeReboot": "Uptime before last reboot",
+      "lastReboot": "Last reboot",
+      "rebootType": "Reboot classification",
+      "rebootInterval": "Effective reboot interval",
+      "rebootMode": "Effective reboot mode",
+      "rebootWindow": "Effective maintenance-window time",
+      "scheduledReboot": "Next planned reboot",
+      "lastScheduledReboot": "Last scheduled reboot",
+      "name": "Name",
+      "nameUnset": "No name is set on the device (fallback shown above).",
+      "lastScan": "Last inventory scan"
     },
     "history": {
       "hint": "Latest 50 completed maintenance runs, newest first.",
@@ -162,6 +186,35 @@
       "loadError": "Could not load maintenance history.",
       "summary": "Showing the latest",
       "deviceResults": "device results"
+    },
+    "origin": {
+      "global": "general",
+      "class": "class",
+      "device": "device"
+    },
+    "rebootType": {
+      "planned": "Planned",
+      "requested": "Requested",
+      "unexpected": "Unexpected"
+    },
+    "sort": {
+      "label": "Sort by",
+      "type": "Type",
+      "name": "Name",
+      "ip": "IP"
+    },
+    "deviceClass": {
+      "none": "No class filter",
+      "standard": "Standard",
+      "critical": "Critical",
+      "test": "Test device",
+      "poorConnection": "Poor connection"
+    },
+    "types": {
+      "allAction": "All",
+      "noneAction": "None",
+      "all": "Types: all",
+      "count": "Types: {selected} of {total}"
     }
   }
 }

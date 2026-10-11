@@ -16,6 +16,85 @@
     function label(node, key, english, deutsch) {
       return text(node, "shelly-admin-maintenance." + key, german() ? deutsch : english);
     }
+    function deviceIdentity(device) {
+      var name = device && device.name !== null && device.name !== undefined ? String(device.name).trim() : "";
+      var hostname = device && device.hostname !== null && device.hostname !== undefined ? String(device.hostname).trim() : "";
+      return { name: name, displayName: name || hostname || device && device.id || device && device.ip || (german() ? "Unbekanntes Gerät" : "Unknown device"), fallback: !name };
+    }
+    function compareText(left, right) { return String(left || "").localeCompare(String(right || ""), undefined, { sensitivity: "base", numeric: true }); }
+    function ipParts(value) { var parts = String(value || "").split("."); return parts.length === 4 && parts.every(function (part) { return /^\d{1,3}$/.test(part) && Number(part) <= 255; }) ? parts.map(Number) : null; }
+    function compareIp(left, right) { var a = ipParts(left); var b = ipParts(right); if (a && b) { for (var index = 0; index < 4; index += 1) { if (a[index] !== b[index]) return a[index] - b[index]; } return 0; } if (a) return -1; if (b) return 1; return compareText(left, right); }
+    function sortDevices(devices, mode) { return (devices || []).slice().sort(function (a, b) { var byName = compareText(deviceIdentity(a).displayName, deviceIdentity(b).displayName); if (mode === "ip") return compareIp(a.ip, b.ip) || byName; if (mode === "type") return compareText(a.model || a.type || a.modelCode, b.model || b.type || b.modelCode) || byName || compareIp(a.ip, b.ip); return byName || compareIp(a.ip, b.ip); }); }
+    function sortStorage(key, value) { try { if (window.localStorage) { if (value) window.localStorage.setItem(key, value); return window.localStorage.getItem(key); } } catch (_error) { /* storage can be disabled */ } return null; }
+    function deviceTypeKey(device) { return String(device && (device.model || device.type || device.modelCode) || (german() ? "Unbekannt" : "Unknown")); }
+    function loadTypeFilter(storageKey, types) {
+      var raw = sortStorage(storageKey); var selected = null;
+      try { var parsed = raw && JSON.parse(raw); if (parsed && parsed.all === true) return types.slice(); if (parsed && Array.isArray(parsed.selected)) selected = parsed.selected.map(String); } catch (_error) { selected = null; }
+      if (selected === null) return types.slice();
+      return selected.filter(function (value) { return types.indexOf(value) >= 0; });
+    }
+    function saveTypeFilter(storageKey, selected, types) { sortStorage(storageKey, JSON.stringify({ all: Array.isArray(types) && selected.length === types.length, selected: selected.slice() })); }
+    function filterDeviceTypes(devices, selectedTypes) {
+      return (devices || []).filter(function (device) { return selectedTypes.indexOf(deviceTypeKey(device)) >= 0; });
+    }
+    function appendDeviceParts(parent, device, sortBy) {
+      var identity = deviceIdentity(device);
+      var partsByKey = {
+        name: { key: "name", value: identity.displayName, fallback: identity.fallback },
+        type: { key: "type", value: device.model || device.type || device.modelCode || (german() ? "Unbekannt" : "Unknown") },
+        ip: { key: "ip", value: device.ip || (german() ? "Nicht verfügbar" : "Not available") }
+      };
+      var order = sortBy === "type" ? ["type", "name", "ip"] : sortBy === "ip" ? ["ip", "name", "type"] : ["name", "type", "ip"];
+      var parts = order.map(function (key) { return partsByKey[key]; });
+      parts.forEach(function (part, index) {
+        if (index) parent.appendChild(document.createTextNode(" · "));
+        var element = document.createElement(part.key === sortBy ? "strong" : "span");
+        element.textContent = part.value;
+        element.className = "shelly-device-part shelly-device-part-" + part.key + (part.fallback ? " fallback" : "");
+        parent.appendChild(element);
+      });
+    }
+    function renderDeviceDropdown(options) {
+      if (typeof document === "undefined") return;
+      var root = document.getElementById(options.rootId); var hidden = document.getElementById(options.hiddenId);
+      if (!root || !hidden) return;
+      if (typeof root._shellyCleanup === "function") root._shellyCleanup();
+      root.innerHTML = ""; var devices = options.devices || []; var selected = devices.some(function (item) { return String(item.id) === String(options.selected); }) ? options.selected : devices[0] && devices[0].id;
+      hidden.value = selected || "";
+      var trigger = document.createElement("button"); trigger.type = "button"; trigger.className = "red-ui-button shelly-device-dropdown-trigger"; trigger.setAttribute("aria-haspopup", "listbox"); trigger.setAttribute("aria-expanded", "false");
+      var menu = document.createElement("div"); menu.className = "shelly-device-dropdown-menu"; menu.setAttribute("role", "listbox"); menu.hidden = true;
+      root.appendChild(trigger); root.appendChild(menu);
+      var activeIndex = Math.max(0, devices.findIndex(function (item) { return String(item.id) === String(selected); })); var rows = [];
+      function renderTrigger() { trigger.innerHTML = ""; var current = devices.find(function (item) { return String(item.id) === String(hidden.value); }); if (current) { appendDeviceParts(trigger, current, options.sortBy); trigger.title = [deviceIdentity(current).displayName, current.model || current.type, current.ip].filter(Boolean).join(" · "); } else { trigger.textContent = options.emptyText; trigger.title = options.emptyText; } }
+      function focusActive() { rows.forEach(function (row, index) { row.classList.toggle("active", index === activeIndex); }); var row = rows[activeIndex]; if (row) { row.focus(); row.scrollIntoView({ block: "nearest" }); } }
+      function close(focusTrigger) { menu.hidden = true; trigger.setAttribute("aria-expanded", "false"); if (focusTrigger) trigger.focus(); }
+      function open(direction) { if (!rows.length) return; menu.hidden = false; trigger.setAttribute("aria-expanded", "true"); if (direction === "last") activeIndex = rows.length - 1; else { var index = devices.findIndex(function (item) { return String(item.id) === String(hidden.value); }); activeIndex = index >= 0 ? index : 0; } focusActive(); }
+      function choose(index) { var device = devices[index]; if (!device) return; hidden.value = device.id; activeIndex = index; renderTrigger(); rows.forEach(function (row) { row.setAttribute("aria-selected", String(row.dataset.deviceId) === String(device.id) ? "true" : "false"); }); close(true); options.onSelect(device.id); }
+      function keydown(event) { if (!event) return; if (event.key === "ArrowDown") { event.preventDefault(); if (menu.hidden) open("first"); else { activeIndex = Math.min(rows.length - 1, activeIndex + 1); focusActive(); } } else if (event.key === "ArrowUp") { event.preventDefault(); if (menu.hidden) open("last"); else { activeIndex = Math.max(0, activeIndex - 1); focusActive(); } } else if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (menu.hidden) open("first"); else choose(activeIndex); } else if (event.key === "Escape") { event.preventDefault(); close(true); } }
+      devices.forEach(function (device, index) { var row = document.createElement("button"); row.type = "button"; row.className = "shelly-device-dropdown-option"; row.dataset.deviceId = device.id; row.setAttribute("role", "option"); row.setAttribute("aria-selected", String(device.id) === String(selected) ? "true" : "false"); row.title = [deviceIdentity(device).displayName, device.model || device.type, device.ip].filter(Boolean).join(" · "); appendDeviceParts(row, device, options.sortBy); row.addEventListener("click", function () { choose(index); }); row.addEventListener("keydown", keydown); menu.appendChild(row); rows.push(row); });
+      trigger.addEventListener("click", function () { if (menu.hidden) open("first"); else close(false); }); trigger.addEventListener("keydown", keydown); renderTrigger();
+      function outside(event) { if (!root.contains(event.target)) close(false); }
+      document.addEventListener("mousedown", outside); root._shellyCleanup = function () { document.removeEventListener("mousedown", outside); };
+    }
+    function renderTypeFilter(options) {
+      if (typeof document === "undefined") return options.types || [];
+      var root = document.getElementById(options.rootId); if (!root) return options.types || [];
+      if (typeof root._shellyCleanup === "function") root._shellyCleanup();
+      root.innerHTML = ""; var types = options.types || []; var selected = loadTypeFilter(options.storageKey, types);
+      var trigger = document.createElement("button"); trigger.type = "button"; trigger.className = "red-ui-button shelly-type-filter-trigger"; trigger.setAttribute("aria-haspopup", "true"); trigger.setAttribute("aria-expanded", "false");
+      var menu = document.createElement("div"); menu.className = "shelly-type-filter-menu"; menu.hidden = true; root.appendChild(trigger); root.appendChild(menu);
+      var actions = document.createElement("div"); actions.className = "shelly-type-filter-actions"; menu.appendChild(actions);
+      var allButton = document.createElement("button"); allButton.type = "button"; allButton.className = "red-ui-button"; allButton.textContent = options.allText; actions.appendChild(allButton);
+      var noneButton = document.createElement("button"); noneButton.type = "button"; noneButton.className = "red-ui-button"; noneButton.textContent = options.noneText; actions.appendChild(noneButton);
+      var boxes = [];
+      function updateLabel() { trigger.textContent = selected.length === types.length ? options.allLabel : options.countLabel.replace("{selected}", selected.length).replace("{total}", types.length); trigger.title = selected.length ? selected.join(", ") : options.noneText; }
+      function commit() { selected = boxes.filter(function (entry) { return entry.input.checked; }).map(function (entry) { return entry.type; }); saveTypeFilter(options.storageKey, selected, types); updateLabel(); options.onChange(selected.slice()); }
+      types.forEach(function (type) { var labelElement = document.createElement("label"); labelElement.className = "shelly-type-filter-option"; labelElement.title = type; var input = document.createElement("input"); input.type = "checkbox"; input.checked = selected.indexOf(type) >= 0; var span = document.createElement("span"); span.textContent = type; labelElement.appendChild(input); labelElement.appendChild(span); input.addEventListener("change", commit); menu.appendChild(labelElement); boxes.push({ type: type, input: input }); });
+      allButton.addEventListener("click", function () { boxes.forEach(function (entry) { entry.input.checked = true; }); commit(); }); noneButton.addEventListener("click", function () { boxes.forEach(function (entry) { entry.input.checked = false; }); commit(); });
+      trigger.addEventListener("click", function () { menu.hidden = !menu.hidden; trigger.setAttribute("aria-expanded", String(!menu.hidden)); }); trigger.addEventListener("keydown", function (event) { if (event.key === "Escape") { menu.hidden = true; trigger.setAttribute("aria-expanded", "false"); trigger.focus(); } });
+      function outside(event) { if (!root.contains(event.target)) { menu.hidden = true; trigger.setAttribute("aria-expanded", "false"); } }
+      document.addEventListener("mousedown", outside); root._shellyCleanup = function () { document.removeEventListener("mousedown", outside); }; updateLabel(); return selected;
+    }
     function missing(node) {
       return label(node, "common.unavailable", "Not available", "Nicht verfügbar");
     }
@@ -44,6 +123,20 @@
         var body = xhr.responseJSON || {};
         RED.notify(body.error && body.error.message || label(node, "notify.deploy", "Deploy the node before using editor controls.", "Node vor der Editor-Bedienung deployen."), "error");
       });
+    }
+    function requestClassAction(node, action) {
+      var deviceClass = $("#node-input-deviceClass").val();
+      if (!deviceClass) {
+        RED.notify(label(node, "notify.selectClass", "Select a device class first.", "Zuerst eine Geräteklasse auswählen."), "warning");
+        return;
+      }
+      var dryRun = $("#node-input-dryRun").prop("checked");
+      var request = { action: action, deviceClass: deviceClass, dryRun: dryRun };
+      if (!dryRun && (action === "update" || action === "reboot")) {
+        if (!window.confirm(label(node, "confirm.classDestructive", "Run this maintenance action for every device in the selected class? This can cause outages.", "Diese Wartungsaktion für alle Geräte der gewählten Klasse ausführen? Dies kann Ausfälle verursachen."))) return;
+        request.confirm = true;
+      }
+      postAction(node, request);
     }
     function addDefinition(host, term, value) {
       $("<dt>").text(term).appendTo(host);
@@ -108,13 +201,32 @@
     function filterMatches(device, filter) {
       return filter === "all" || Boolean(device.filters && device.filters[filter]);
     }
-    function formatDuration(seconds) {
-      var value = Number(seconds);
-      if (!Number.isFinite(value)) return "—";
+    function formatDuration(node, seconds) {
+      if (seconds === null || seconds === undefined || seconds === "" || !Number.isFinite(Number(seconds))) return missing(node);
+      var value = Math.max(0, Math.floor(Number(seconds)));
       var days = Math.floor(value / 86400);
       var hours = Math.floor((value % 86400) / 3600);
       var minutes = Math.floor((value % 3600) / 60);
-      return [days ? days + " d" : null, hours ? hours + " h" : null, !days && minutes ? minutes + " min" : null].filter(Boolean).join(" ") || "0 min";
+      var parts = [];
+      if (days) parts.push(days + (german() ? (days === 1 ? " Tag" : " Tage") : (days === 1 ? " day" : " days")));
+      if (hours) parts.push(hours + (german() ? " Std" : " h"));
+      if (!days && minutes) parts.push(minutes + " min");
+      return parts.join(" ") || (german() ? "unter 1 min" : "less than 1 min");
+    }
+    function rebootType(node, value) {
+      if (value === "planned") return label(node, "rebootType.planned", "Planned", "Geplant");
+      if (value === "requested") return label(node, "rebootType.requested", "Requested", "Angefordert");
+      if (value === "unexpected") return label(node, "rebootType.unexpected", "Unexpected", "Unerwartet");
+      return missing(node);
+    }
+    function originText(node, value) {
+      if (value === "device") return label(node, "origin.device", "device", "Gerät");
+      if (value === "class") return label(node, "origin.class", "class", "Klasse");
+      return label(node, "origin.global", "general", "allgemein");
+    }
+    function effectiveText(node, value, origin, unit) {
+      if (value === null || value === undefined || value === "") return missing(node);
+      return display(node, value, unit) + " (" + originText(node, origin) + ")";
     }
     function renderDeviceDetail(node, device) {
       var host = $("#node-input-maintenance-device-detail").empty();
@@ -122,15 +234,28 @@
         $("<div>").addClass("shelly-view-state shelly-view-state-empty").text(label(node, "devices.noSelection", "No matching device is selected.", "Kein passendes Gerät ist ausgewählt.")).appendTo(host);
         return;
       }
-      $("<h4>").text(device.name || device.model || device.id || missing(node)).appendTo(host);
+      var identity = deviceIdentity(device);
+      $("<h4>").addClass(identity.fallback ? "shelly-device-detail-name fallback" : "shelly-device-detail-name").attr("title", identity.displayName).text(identity.displayName).appendTo(host);
       var fields = $("<dl>").addClass("shelly-maintenance-fields").appendTo(host);
-      addDefinition(fields, label(node, "devices.model", "Device name / model", "Gerätename / Modell"), [device.name, device.model].filter(Boolean).join(" / ") || missing(node));
+      addDefinition(fields, label(node, "devices.name", "Name", "Name"), identity.name || label(node, "devices.nameUnset", "No name is set on the device (fallback shown above).", "Am Gerät ist kein Name gesetzt (oben wird der Ersatzname angezeigt)."));
+      addDefinition(fields, label(node, "devices.model", "Model", "Modell"), device.model || missing(node));
       addDefinition(fields, label(node, "devices.id", "Device ID", "Geräte-ID"), display(node, device.id));
+      addDefinition(fields, label(node, "devices.deviceClass", "Device class", "Geräteklasse"), display(node, device.deviceClass));
+      addDefinition(fields, label(node, "devices.overrides", "Device overrides", "Geräte-Overrides"), Object.keys(device.overrides || {}).join(", ") || label(node, "devices.inherited", "None (inherited)", "Keine (geerbt)"));
+      addDefinition(fields, label(node, "devices.note", "Note / label", "Notiz / Bezeichnung"), display(node, device.note));
       addDefinition(fields, label(node, "devices.ip", "IP address", "IP-Adresse"), display(node, device.ip));
       addDefinition(fields, label(node, "devices.generation", "Generation", "Generation"), display(node, device.generation));
       addDefinition(fields, label(node, "devices.reachability", "Reachability", "Erreichbarkeit"), booleanText(node, device.reachable, "Online", "Online", "Offline", "Offline"));
-      addDefinition(fields, label(node, "devices.uptime", "Current uptime", "Aktuelle Uptime"), device.uptimeSec === null || device.uptimeSec === undefined ? missing(node) : formatDuration(device.uptimeSec));
-      addDefinition(fields, label(node, "devices.scheduledReboot", "Scheduled reboot", "Geplanter Neustart"), device.scheduledReboot ? [device.scheduledReboot.enabled ? (german() ? "Aktiv" : "Enabled") : (german() ? "Aus" : "Disabled"), device.scheduledReboot.due ? (german() ? "Fällig" : "Due") : stateLabel(node, device.scheduledReboot.reason), device.scheduledReboot.dueAt ? timestampText(node, device.scheduledReboot.dueAt) : missing(node)].join(" · ") : missing(node));
+      addDefinition(fields, label(node, "devices.lastScan", "Last inventory scan", "Letzter Inventarscan"), device.lastScan ? [device.lastScan.mode, device.lastScan.status, timestampText(node, device.lastScan.at)].filter(Boolean).join(" · ") : missing(node));
+      addDefinition(fields, label(node, "devices.uptime", "Current uptime", "Aktuelle Uptime"), formatDuration(node, device.currentUptimeSec));
+      addDefinition(fields, label(node, "devices.uptimeBeforeReboot", "Uptime before last reboot", "Uptime vor dem letzten Neustart"), formatDuration(node, device.uptimeBeforeLastRebootSec));
+      addDefinition(fields, label(node, "devices.lastReboot", "Last reboot", "Letzter Neustart"), timestampText(node, device.lastRebootAt));
+      addDefinition(fields, label(node, "devices.rebootType", "Reboot classification", "Neustartklassifikation"), rebootType(node, device.lastRebootType));
+      var reboot = device.scheduledReboot || {}; var origins = reboot.settingOrigins || {};
+      addDefinition(fields, label(node, "devices.rebootInterval", "Effective reboot interval", "Effektives Neustartintervall"), effectiveText(node, reboot.intervalDays, origins.intervalDays, german() ? "Tage" : "days"));
+      addDefinition(fields, label(node, "devices.rebootMode", "Effective reboot mode", "Effektiver Neustartmodus"), effectiveText(node, reboot.mode, origins.mode));
+      addDefinition(fields, label(node, "devices.rebootWindow", "Effective maintenance-window time", "Effektive Wartungsfenster-Uhrzeit"), effectiveText(node, reboot.time, origins.time));
+      addDefinition(fields, label(node, "devices.scheduledReboot", "Next planned reboot", "Nächster geplanter Neustart"), reboot.enabled ? timestampText(node, reboot.scheduledFor) : missing(node));
       addDefinition(fields, label(node, "devices.lastScheduledReboot", "Last scheduled reboot", "Letzter geplanter Neustart"), device.scheduledReboot && device.scheduledReboot.lastAttemptAt ? timestampText(node, device.scheduledReboot.lastAttemptAt) + " · " + stateLabel(node, device.scheduledReboot.lastResult) : missing(node));
       addDefinition(fields, label(node, "devices.currentFirmware", "Current firmware", "Aktuelle Firmware"), display(node, device.currentFirmware));
       addDefinition(fields, label(node, "devices.stableFirmware", "Available stable firmware", "Verfügbare Stable-Firmware"), display(node, device.stableFirmware));
@@ -152,7 +277,17 @@
       var host = $("#node-input-maintenance-devices").empty().attr("data-state", result.empty ? "empty" : "ready");
       var filter = state && state.filter || $("#node-input-maintenance-filter").val() || "all";
       $("#node-input-maintenance-filter").val(filter);
-      var devices = (result.devices || []).filter(function (device) { return filterMatches(device, filter); });
+      var sortBy = state && state.sort || $("#node-input-maintenance-sort").val() || sortStorage("shelly-admin:sort:maintenance-devices") || "name";
+      $("#node-input-maintenance-sort").val(sortBy);
+      var statusDevices = (result.devices || []).filter(function (device) { return filterMatches(device, filter); });
+      var types = Array.from(new Set((result.devices || []).map(deviceTypeKey))).sort(compareText);
+      var selectedTypes = renderTypeFilter({
+        rootId: "node-input-maintenance-type-filter", types: types, storageKey: "shelly-admin:types:maintenance-devices",
+        allText: label(node, "types.allAction", "All", "Alle"), noneText: label(node, "types.noneAction", "None", "Keine"),
+        allLabel: label(node, "types.all", "Types: all", "Typen: alle"), countLabel: label(node, "types.count", "Types: {selected} of {total}", "Typen: {selected} von {total}"),
+        onChange: function () { renderDevices(node, result, { filter: filter, sort: sortBy, selected: node._shellyMaintenanceSelectedDeviceId }); }
+      });
+      var devices = sortDevices(filterDeviceTypes(statusDevices, selectedTypes), sortBy);
       var summary = result.summary || {};
       $("<div>").addClass("shelly-maintenance-summary").text([
         display(node, summary.total) + " " + label(node, "devices.total", "devices", "Geräte"),
@@ -163,37 +298,32 @@
       ].join(" · ")).appendTo(host);
       if (!devices.length) {
         $("<div>").addClass("shelly-view-state shelly-view-state-empty").text(label(node, "devices.empty", "No devices match this filter.", "Keine Geräte entsprechen diesem Filter.")).appendTo(host);
+        $("#node-input-maintenance-device-selector").val("");
+        renderDeviceDropdown({ rootId: "node-input-maintenance-device-dropdown", hiddenId: "node-input-maintenance-device-selector", devices: [], selected: null, sortBy: sortBy, emptyText: label(node, "devices.empty", "No devices match this filter.", "Keine Geräte entsprechen diesem Filter."), onSelect: function () {} });
         renderDeviceDetail(node, null);
         return;
       }
       var selected = state && state.selected || node._shellyMaintenanceSelectedDeviceId;
       if (!devices.some(function (device) { return String(device.id) === String(selected); })) selected = devices[0].id;
       node._shellyMaintenanceSelectedDeviceId = selected;
-      devices.forEach(function (device) {
-        var button = $("<button>").attr("type", "button").attr("data-device-id", device.id).addClass("red-ui-button shelly-maintenance-device-row");
-        if (String(device.id) === String(selected)) button.addClass("selected");
-        $("<strong>").text(device.name || device.model || device.id || missing(node)).appendTo(button);
-        $("<span>").text([device.ip || missing(node), booleanText(node, device.reachable, "Online", "Online", "Offline", "Offline"), device.currentFirmware || missing(node), device.updateEligible ? label(node, "filters.updateAvailable", "Update available", "Update verfügbar") : device.scheduledReboot && device.scheduledReboot.due ? label(node, "filters.rebootDue", "Reboot due", "Neustart fällig") : stateLabel(node, device.maintenance && device.maintenance.deviceStatus)].join(" · ")).appendTo(button);
-        button.on("click.shellyAdmin", function () {
-          node._shellyMaintenanceSelectedDeviceId = $(this).attr("data-device-id");
-          $(".shelly-maintenance-device-row").toggleClass("selected", false);
-          $(this).toggleClass("selected", true);
-          var chosen = (node._shellyMaintenanceDeviceData.devices || []).find(function (item) { return String(item.id) === String(node._shellyMaintenanceSelectedDeviceId); });
-          renderDeviceDetail(node, chosen);
-        });
-        button.appendTo(host);
-      });
+      $("#node-input-maintenance-device-selector").val(selected);
+      renderDeviceDropdown({ rootId: "node-input-maintenance-device-dropdown", hiddenId: "node-input-maintenance-device-selector", devices: devices, selected: selected, sortBy: sortBy, emptyText: label(node, "devices.empty", "No devices match this filter.", "Keine Geräte entsprechen diesem Filter."), onSelect: function (id) {
+        node._shellyMaintenanceSelectedDeviceId = id;
+        var chosen = devices.find(function (item) { return String(item.id) === String(id); });
+        renderDeviceDetail(node, chosen);
+      } });
       renderDeviceDetail(node, devices.find(function (device) { return String(device.id) === String(selected); }));
     }
     function loadDevices(node, preserve) {
       var state = preserve ? {
         filter: $("#node-input-maintenance-filter").val() || "all",
+        sort: $("#node-input-maintenance-sort").val() || "name",
         selected: node._shellyMaintenanceSelectedDeviceId,
-        scroll: viewState("#node-input-maintenance-devices")
-      } : { filter: $("#node-input-maintenance-filter").val() || "all", selected: node._shellyMaintenanceSelectedDeviceId };
+        scroll: viewState("#node-input-maintenance-device-detail")
+      } : { filter: $("#node-input-maintenance-filter").val() || "all", sort: $("#node-input-maintenance-sort").val() || "name", selected: node._shellyMaintenanceSelectedDeviceId };
       setState(node, "#node-input-maintenance-devices", "loading", label(node, "devices.loading", "Loading device overview…", "Geräteübersicht wird geladen…"));
       $.ajax({ url: "shelly-admin/nodes/" + encodeURIComponent(node.id) + "/maintenance/devices", type: "GET", dataType: "json", cache: false })
-        .done(function (result) { renderDevices(node, result || {}, state); restoreViewState("#node-input-maintenance-devices", state.scroll); })
+        .done(function (result) { renderDevices(node, result || {}, state); restoreViewState("#node-input-maintenance-device-detail", state.scroll); })
         .fail(function (xhr) {
           var body = xhr.responseJSON || {};
           setState(node, "#node-input-maintenance-devices", "error", body.error && body.error.message || label(node, "devices.loadError", "Could not load the device overview.", "Geräteübersicht konnte nicht geladen werden."));
@@ -245,7 +375,7 @@
       color: "#E5A93D",
       defaults: {
         name: { value: "" }, admin: { value: "", type: "shelly-admin-config", required: true }, action: { value: "check" },
-        deviceSelectors: { value: "" }, allowAll: { value: false }, dryRun: { value: true }, firmwarePolicy: { value: "stable" },
+        deviceSelectors: { value: "" }, deviceClass: { value: "" }, allowAll: { value: false }, dryRun: { value: true }, firmwarePolicy: { value: "stable" },
         deviceTimeoutSeconds: { value: 15, validate: RED.validators.number() }, runTimeoutSeconds: { value: 900, validate: RED.validators.number() },
         staggerSeconds: { value: 30, validate: RED.validators.number() }, waitBeforeValidationSeconds: { value: 5, validate: RED.validators.number() },
         validationTimeoutSeconds: { value: 180, validate: RED.validators.number() }, conditionType: { value: "always" }, conditionValue: { value: "" },
@@ -262,10 +392,13 @@
         node._shellyMaintenanceLoadedTabs = {};
         node._shellyMaintenanceDeviceData = null;
         node._shellyMaintenanceSelectedDeviceId = null;
+        $("#node-input-maintenance-sort").val(sortStorage("shelly-admin:sort:maintenance-devices") || "name");
         $("#node-input-manual-start").on("click.shellyAdmin", function () {
           var action = $("#node-input-action").val();
           var dryRun = $("#node-input-dryRun").prop("checked");
+          var deviceClass = $("#node-input-deviceClass").val();
           var request = { action: action, dryRun: dryRun };
+          if (deviceClass) request.deviceClass = deviceClass;
           if (!dryRun && (action === "update" || action === "reboot")) {
             if (!window.confirm(label(node, "confirm.destructive", "Run the selected maintenance action on the deployed node? This can cause outages.", "Ausgewählte Wartungsaktion auf der deployten Node ausführen? Dies kann Ausfälle verursachen."))) return;
             request.confirm = true;
@@ -273,17 +406,24 @@
           postAction(node, request);
         });
         $("#node-input-manual-cancel").on("click.shellyAdmin", function () { postAction(node, { action: "cancel", reason: "editor-button" }); });
+        $("#node-input-class-check").on("click.shellyAdmin", function () { requestClassAction(node, "check"); });
+        $("#node-input-class-update").on("click.shellyAdmin", function () { requestClassAction(node, "update"); });
+        $("#node-input-class-reboot").on("click.shellyAdmin", function () { requestClassAction(node, "reboot"); });
         $("#node-input-refresh-maintenance-status").on("click.shellyAdmin", function () { node._shellyMaintenanceLoadedTabs.status = true; loadStatus(node, true); });
         $("#node-input-refresh-maintenance-devices").on("click.shellyAdmin", function () { node._shellyMaintenanceLoadedTabs.devices = true; loadDevices(node, true); });
         $("#node-input-refresh-maintenance-history").on("click.shellyAdmin", function () { node._shellyMaintenanceLoadedTabs.history = true; loadHistory(node, true); });
         $("#node-input-maintenance-filter").on("change.shellyAdmin", function () {
-          if (node._shellyMaintenanceDeviceData) renderDevices(node, node._shellyMaintenanceDeviceData, { filter: $(this).val(), selected: node._shellyMaintenanceSelectedDeviceId });
+          if (node._shellyMaintenanceDeviceData) renderDevices(node, node._shellyMaintenanceDeviceData, { filter: $(this).val(), sort: $("#node-input-maintenance-sort").val(), selected: node._shellyMaintenanceSelectedDeviceId });
+        });
+        $("#node-input-maintenance-sort").on("change.shellyAdmin", function () {
+          sortStorage("shelly-admin:sort:maintenance-devices", $(this).val());
+          if (node._shellyMaintenanceDeviceData) renderDevices(node, node._shellyMaintenanceDeviceData, { filter: $("#node-input-maintenance-filter").val(), sort: $(this).val(), selected: node._shellyMaintenanceSelectedDeviceId });
         });
         $(".shelly-maintenance-tab-button").on("click.shellyAdmin", function () { activateTab(node, $(this).attr("data-shelly-maintenance-tab")); });
         activateTab(node, "settings");
       }
     });
-    if (typeof window !== "undefined") window.shellyAdminMaintenanceEditor = { activateTab: activateTab, renderStatus: renderStatus, renderDevices: renderDevices, renderHistory: renderHistory };
+    if (typeof window !== "undefined") window.shellyAdminMaintenanceEditor = { activateTab: activateTab, renderStatus: renderStatus, renderDevices: renderDevices, renderHistory: renderHistory, deviceIdentity: deviceIdentity, sortDevices: sortDevices, sortStorage: sortStorage, filterDeviceTypes: filterDeviceTypes, loadTypeFilter: loadTypeFilter, saveTypeFilter: saveTypeFilter, renderDeviceDropdown: renderDeviceDropdown, renderTypeFilter: renderTypeFilter, requestClassAction: requestClassAction };
   }());
 </script>
 
@@ -300,9 +440,11 @@
     <div class="form-row"><label for="node-input-admin"><i class="fa fa-cog"></i> <span data-i18n="shelly-admin-maintenance.label.admin"></span></label><input type="text" id="node-input-admin"></div>
     <div class="form-row"><label for="node-input-action"><span data-i18n="shelly-admin-maintenance.label.action"></span></label><select id="node-input-action"><option value="check" data-i18n="shelly-admin-maintenance.option.check"></option><option value="update" data-i18n="shelly-admin-maintenance.option.update"></option><option value="reboot" data-i18n="shelly-admin-maintenance.option.reboot"></option></select></div>
     <div class="form-row"><label for="node-input-deviceSelectors"><span data-i18n="shelly-admin-maintenance.label.deviceSelectors"></span></label><textarea id="node-input-deviceSelectors" rows="3" style="width:70%"></textarea></div>
+    <div class="form-row"><label for="node-input-deviceClass"><span data-i18n="shelly-admin-maintenance.label.deviceClass"></span></label><select id="node-input-deviceClass"><option value="" data-i18n="shelly-admin-maintenance.deviceClass.none"></option><option value="standard" data-i18n="shelly-admin-maintenance.deviceClass.standard"></option><option value="critical" data-i18n="shelly-admin-maintenance.deviceClass.critical"></option><option value="test" data-i18n="shelly-admin-maintenance.deviceClass.test"></option><option value="poor-connection" data-i18n="shelly-admin-maintenance.deviceClass.poorConnection"></option></select></div>
+    <div class="form-row"><label><span data-i18n="shelly-admin-maintenance.label.classActions"></span></label><button type="button" id="node-input-class-check" class="red-ui-button"><span data-i18n="shelly-admin-maintenance.button.classCheck"></span></button> <button type="button" id="node-input-class-update" class="red-ui-button"><span data-i18n="shelly-admin-maintenance.button.classUpdate"></span></button> <button type="button" id="node-input-class-reboot" class="red-ui-button"><span data-i18n="shelly-admin-maintenance.button.classReboot"></span></button></div>
     <div class="form-row"><label for="node-input-allowAll"><span data-i18n="shelly-admin-maintenance.label.allowAll"></span></label><input type="checkbox" id="node-input-allowAll" style="width:auto"></div>
     <div class="form-row"><label for="node-input-dryRun"><span data-i18n="shelly-admin-maintenance.label.dryRun"></span></label><input type="checkbox" id="node-input-dryRun" style="width:auto"></div>
-    <div class="form-row"><label for="node-input-firmwarePolicy"><span data-i18n="shelly-admin-maintenance.label.firmwarePolicy"></span></label><select id="node-input-firmwarePolicy"><option value="stable" data-i18n="shelly-admin-maintenance.option.stableOnly"></option><option value="allow-beta" data-i18n="shelly-admin-maintenance.option.allowBeta"></option></select></div>
+    <div class="form-row"><label for="node-input-firmwarePolicy"><span data-i18n="shelly-admin-maintenance.label.firmwarePolicy"></span></label><select id="node-input-firmwarePolicy"><option value="stable" data-i18n="shelly-admin-maintenance.option.stableOnly"></option><option value="allow-beta" data-i18n="shelly-admin-maintenance.option.allowBeta"></option><option value="disabled" data-i18n="shelly-admin-maintenance.option.noAutomaticUpdates"></option></select></div>
     <div class="form-row"><label for="node-input-deviceTimeoutSeconds"><span data-i18n="shelly-admin-maintenance.label.deviceTimeoutSeconds"></span></label><input type="number" id="node-input-deviceTimeoutSeconds" min="1"></div>
     <div class="form-row"><label for="node-input-runTimeoutSeconds"><span data-i18n="shelly-admin-maintenance.label.runTimeoutSeconds"></span></label><input type="number" id="node-input-runTimeoutSeconds" min="1"></div>
     <div class="form-row"><label for="node-input-staggerSeconds"><span data-i18n="shelly-admin-maintenance.label.staggerSeconds"></span></label><input type="number" id="node-input-staggerSeconds" min="0"></div>
@@ -326,8 +468,10 @@
   </section>
 
   <section id="node-input-maintenance-panel-devices" class="shelly-maintenance-tab-panel" data-shelly-maintenance-panel="devices" role="tabpanel" aria-hidden="true" style="display:none">
-    <div class="shelly-view-toolbar"><label for="node-input-maintenance-filter" data-i18n="shelly-admin-maintenance.filters.label"></label><select id="node-input-maintenance-filter"><option value="all" data-i18n="shelly-admin-maintenance.filters.all"></option><option value="updateAvailable" data-i18n="shelly-admin-maintenance.filters.updateAvailable"></option><option value="error" data-i18n="shelly-admin-maintenance.filters.error"></option><option value="offline" data-i18n="shelly-admin-maintenance.filters.offline"></option><option value="updated" data-i18n="shelly-admin-maintenance.filters.updated"></option><option value="skipped" data-i18n="shelly-admin-maintenance.filters.skipped"></option></select><button type="button" id="node-input-refresh-maintenance-devices" class="red-ui-button"><i class="fa fa-refresh"></i> <span data-i18n="shelly-admin-maintenance.button.refresh"></span></button></div>
-    <div id="node-input-maintenance-devices" class="shelly-admin-view shelly-maintenance-device-list" aria-live="polite"></div>
+    <div class="shelly-view-toolbar shelly-device-toolbar"><label for="node-input-maintenance-filter" data-i18n="shelly-admin-maintenance.filters.label"></label><select id="node-input-maintenance-filter" class="shelly-status-filter"><option value="all" data-i18n="shelly-admin-maintenance.filters.all"></option><option value="updateAvailable" data-i18n="shelly-admin-maintenance.filters.updateAvailable"></option><option value="error" data-i18n="shelly-admin-maintenance.filters.error"></option><option value="offline" data-i18n="shelly-admin-maintenance.filters.offline"></option><option value="updated" data-i18n="shelly-admin-maintenance.filters.updated"></option><option value="skipped" data-i18n="shelly-admin-maintenance.filters.skipped"></option></select><div id="node-input-maintenance-type-filter" class="shelly-type-filter"></div><div class="shelly-sort-refresh"><label for="node-input-maintenance-sort"><span data-i18n="shelly-admin-maintenance.sort.label"></span></label><select id="node-input-maintenance-sort" class="shelly-compact-select"><option value="type" data-i18n="shelly-admin-maintenance.sort.type"></option><option value="name" data-i18n="shelly-admin-maintenance.sort.name"></option><option value="ip" data-i18n="shelly-admin-maintenance.sort.ip"></option></select><button type="button" id="node-input-refresh-maintenance-devices" class="red-ui-button"><i class="fa fa-refresh"></i> <span data-i18n="shelly-admin-maintenance.button.refresh"></span></button></div></div>
+    <div id="node-input-maintenance-devices" class="shelly-admin-view shelly-maintenance-summary-view" aria-live="polite"></div>
+    <input type="hidden" id="node-input-maintenance-device-selector">
+    <div id="node-input-maintenance-device-dropdown" class="shelly-device-dropdown"></div>
     <div id="node-input-maintenance-device-detail" class="shelly-maintenance-device-detail"></div>
   </section>
 
@@ -342,14 +486,13 @@
     .shelly-maintenance-tab-button.active { background:var(--red-ui-primary-background,#4b8); color:var(--red-ui-primary-text-color,#fff); font-weight:600; }
     .shelly-maintenance-tab-panel { min-height:220px; }
     .shelly-view-toolbar { display:flex; gap:8px; align-items:center; justify-content:space-between; margin-bottom:8px; }
-    .shelly-view-toolbar select { flex:1; min-width:150px; }
-    .shelly-admin-view { max-height:330px; overflow:auto; border:1px solid var(--red-ui-form-input-border-color,#ccc); padding:10px; border-radius:3px; background:var(--red-ui-secondary-background,#fff); }
+    .shelly-view-toolbar select { min-width:0; }.shelly-device-toolbar{justify-content:flex-start;flex-wrap:wrap}.shelly-device-toolbar .shelly-status-filter{width:auto;min-width:120px;max-width:185px}.shelly-sort-refresh{display:flex;gap:8px;align-items:center;margin-left:auto;white-space:nowrap}.shelly-device-toolbar .shelly-compact-select{width:auto;min-width:75px;max-width:110px}
+    .shelly-admin-view { max-height:330px; overflow-y:auto; overflow-x:hidden; border:1px solid var(--red-ui-form-input-border-color,#ccc); padding:10px; border-radius:3px; background:var(--red-ui-secondary-background,#fff); min-width:0; }
     .shelly-maintenance-summary { font-weight:600; margin-bottom:8px; }
     .shelly-maintenance-fields { display:grid; grid-template-columns:minmax(155px,auto) 1fr; gap:4px 9px; margin:7px 0; font-size:.9em; }
     .shelly-maintenance-fields dt { font-weight:600; }
     .shelly-maintenance-fields dd { margin:0; overflow-wrap:anywhere; }
-    .shelly-maintenance-device-row { display:flex; width:100%; justify-content:space-between; text-align:left; gap:10px; margin:4px 0; }
-    .shelly-maintenance-device-row.selected { outline:2px solid var(--red-ui-primary-background,#2563eb); }
+    .shelly-device-dropdown,.shelly-type-filter{position:relative;min-width:0}.shelly-device-dropdown{margin-top:8px}.shelly-device-dropdown-trigger{width:100%;display:block;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shelly-device-dropdown-menu,.shelly-type-filter-menu{position:absolute;z-index:1001;top:100%;left:0;right:0;max-height:260px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--red-ui-form-input-border-color,#bbb);background:var(--red-ui-secondary-background,#fff);box-shadow:0 4px 10px rgba(0,0,0,.18);padding:4px}.shelly-device-dropdown-option{display:block;width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shelly-device-dropdown-option:hover,.shelly-device-dropdown-option:focus,.shelly-device-dropdown-option.active{background:var(--red-ui-list-item-background-hover,#e8e8e8);outline:none}.shelly-device-part.fallback,.shelly-device-detail-name.fallback{font-style:italic;color:#6b7280}.shelly-type-filter-trigger{white-space:nowrap}.shelly-type-filter-menu{right:0;left:auto;min-width:220px}.shelly-type-filter-actions{display:flex;gap:4px;padding:3px}.shelly-type-filter-option{display:flex;gap:7px;align-items:center;padding:5px;min-width:0}.shelly-type-filter-option span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shelly-type-filter-option input{width:auto;margin:0}
     .shelly-maintenance-device-detail { margin-top:10px; border:1px solid var(--red-ui-form-input-border-color,#ccc); padding:10px; border-radius:3px; }
     .shelly-maintenance-run-card { border-left:5px solid #6b7280; padding:8px 10px; margin:8px 0; background:var(--red-ui-secondary-background,#f7f7f7); border-radius:2px; }
     .shelly-run-failed, .shelly-run-completed-with-issues { border-left-color:#b91c1c; }
@@ -359,17 +502,22 @@
     .shelly-view-state-error { color:#b91c1c; background:#fee2e2; }
     .shelly-view-state-empty { color:inherit; background:var(--red-ui-secondary-background,#f3f4f6); opacity:.85; }
     .shelly-view-hint { opacity:.8; }
+
+    .shelly-type-filter{flex:0 1 280px;width:280px;max-width:100%;min-width:0}.shelly-type-filter-trigger{width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis}.shelly-type-filter-menu{left:0;right:auto;width:100%;min-width:100%;max-width:100%;box-sizing:border-box}.shelly-type-filter-option{white-space:normal;box-sizing:border-box;align-items:flex-start}.shelly-type-filter-option span{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;min-width:0}
   </style>
 </script>
 
 <script type="text/html" data-help-name="shelly-admin-maintenance">
   <p>Checks firmware or performs guarded, sequential firmware updates and reboots. Dry-run is the default. Non-dry-run actions triggered by input require <code>msg.confirm === true</code>.</p>
   <p>The edit dialog contains four real views: <strong>Settings</strong>, <strong>Current Status</strong>, <strong>Device Overview</strong> and <strong>History</strong>. The read-only views use <code>shelly-admin.read</code>-protected Admin endpoints and never expose credentials. Each view loads once when first opened in the current dialog and then only through its visible Refresh button; there is no periodic editor refresh. Manual refresh preserves the selected filter, selected device and scroll position where possible.</p>
+  <p>Device Overview includes the effective device class, active override keys and note/label. It shows current uptime, uptime before the last reboot, reboot time/classification, effective reboot interval/mode/window with origin, and the next planned reboot. The scheduler resolves and uses each reboot value as device override → class → general.</p>
   <p><strong>Device Overview</strong> shows device name/model, ID, IP address, generation, reachability, current firmware, Stable/Beta availability under the selected policy, update eligibility, last firmware check, last update result, last successful and failed update attempts, errors/timeouts, post-update recovery and active/completed maintenance runs. Missing values are shown as <em>Not available</em>. Filters cover update available, error, offline, successfully updated and skipped.</p>
   <p><code>msg.action</code>: <code>start</code> (configured action), <code>check</code>, <code>update</code>, <code>reboot</code>, <code>cancel</code>, or <code>status</code>. Start and Cancel in the editor use the same deployed-node API. Real update/reboot requires explicit confirmation in the editor or <code>msg.confirm === true</code>.</p>
   <p>Select exact IDs, IPs or MAC addresses in <code>msg.devices</code> or the editor. An empty selection never means “all” unless <code>allowAll</code> is explicitly true. Conditions support restart-required, uptime, free-memory and firmware-available checks.</p>
   <p>Firmware update first checks every selected device, then runs update, stagger, restart wait and validation only for policy-eligible candidates. Ineligible devices finish as <code>skipped</code>/<code>no-policy-eligible-update</code>. Dry-run returns <code>plannedUpdates</code> without update or waiting. Progress separately reports checked, eligible, skipped, updated, failed and timeouts; update-phase progress counts candidates only. Reboots remain sequential. Schedule mode <em>Notify</em> only checks. Automatic updates require the dedicated option and non-dry-run configuration.</p>
   <p>Version 0.3.0 passes the configuration node's 250–60000 ms <em>Firmware Check Timeout</em> (default 2500 ms) unchanged to each complete firmware check and every Gen1/Gen2+ request. A firmware-check timeout or device error is counted and processing continues with every remaining device. Active HTTP requests, validation waits and stagger waits observe the abort signal. <em>Stable only</em> is the safe default; beta-only releases require explicit <em>Allow beta</em>.</p>
   <p>Real update and reboot requests create an expected-restart marker. Successful post-action validation uses the shared recovery lifecycle, clears one active reachability error at most once and preserves its resolution details.</p>
-  <p><strong>⚠️ Use at your own risk – no warranty.</strong> Firmware updates, reboots, relay actions and automatic shutdown can cause outages, data loss, equipment/building damage or costs. APIs and firmware may change. Use dry-run first, select a small pilot group, stagger the rollout, maintain power/network stability and supervise the process. Unofficial community project, not affiliated with Shelly or Allterco; provided “as is”.</p>
+    <p><strong>Device dropdown and classes (0.5.1):</strong> Device Overview uses one keyboard-accessible dropdown above details, with the bold active sort key first (`Name · Type · IP`, `Type · Name · IP`, or `IP · Name · Type`) and persistent type/status filters. The type popover is width-bounded inside the dialog and wraps long choices. Class-wide Check, Update and Reboot use <code>deviceClass</code> and retain Dry-run, confirmation and rolling execution safeguards.</p>
+<p><strong>⚠️ Use at your own risk – no warranty.</strong> Firmware updates, reboots, relay actions and automatic shutdown can cause outages, data loss, equipment/building damage or costs. APIs and firmware may change. Use dry-run first, select a small pilot group, stagger the rollout, maintain power/network stability and supervise the process. Unofficial community project, not affiliated with Shelly or Allterco; provided “as is”.</p>
+  <p>Reachability and Offline filters use the latest direct device request; the configurable failure threshold controls notification confirmation rather than displaying a failed probe as online.</p>
 </script>

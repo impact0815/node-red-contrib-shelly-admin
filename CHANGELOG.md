@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.5.1
+
+- Added configured Shelly names to inventory: Gen2+ uses `Shelly.GetDeviceInfo.name` or `Sys.GetConfig.device.name`; Gen1 uses `/settings.name`.
+- Discovery and Monitor refresh names after every successful probe, including device-side renames and cleared names; inventory schema 3 migrates older entries with `name: null`.
+- Added visible fallback order name → hostname/device ID → IP, with italic/muted fallback labels.
+- Removed the separate all-device button list from Monitor Device Details, Maintenance Device Overview and Config Device Settings; each view now has one slim, dependency-free custom dropdown followed directly by details.
+- Device dropdowns put the bold active sort key first in both selected and opened rows: `Name · Type · IP`, `Type · Name · IP`, or `IP · Name · Type`, while retaining fallback styling, ellipsis/tooltips, bounded scrolling, keyboard operation and outside-click closing.
+- Added persistent per-view model/type multi-filters with All/None controls and corrected their popovers to stay left-anchored, width-bounded and fully readable inside the editor dialog; existing Maintenance status filters combine with them. Manual refresh preserves sort, type/status filters, selection and scroll.
+- Added class-wide Maintenance checks, updates and reboots through editor buttons and `msg.deviceClass`, retaining dry-run, confirmation, policy, timeout and rolling-execution safeguards.
+- Expanded Config class management with effective maintenance-window summaries, assigned-device membership and each member's next planned reboot.
+- Separated persistent inventory from current scan evidence: `foundDevices`, `foundThisScan`, `notFoundThisScan`, `inventoryNotScanned` and per-device `lastScan` now show what a Full scan actually found without automatically deleting historical inventory.
+- Added immediate `directReachable` state so failed direct probes no longer display as online while Offline notification confirmation is still pending; scheduled reboots and safety evaluation also use the latest direct result.
+- Added Monitor Device Details actions **Reload all data**, bounded **Retry / Wait**, and confirmed **Remove**, including operational-state/history cleanup and explicit retention of class/override configuration for safe rediscovery.
+- Recalculated finding summaries after removal and documented the code/test-based architecture review in `docs/ARCHITECTURE-REVIEW-0.5.1.md`.
+- Separated device-probe failures from persistence failures so a successful manual reload is never falsely marked unreachable merely because the Context-store save failed.
+- Made manual Remove transactional across inventory/history/analysis/scheduler state by rolling back in-memory deletion when persistence fails.
+- Added the device name as heading and dedicated detail field, including a clear no-name hint.
+- Added `device.name`/`device.hostname` to structured observations and events and made human finding/notification text lead with the device display name.
+- Updated bilingual README, Node help, Message API and regression coverage.
+
+## 0.5.0
+
+- Added three-level device settings resolution: explicit device override, device class, then general configuration.
+- Added editable Standard, Critical, Test device and Poor connection class presets plus independent per-field inheritance controls.
+- Added per-device monitoring, polling cadence, offline confirmation, recovery duration, notification categories, firmware policy, automatic reboot policy, temperature thresholds, history retention, detail level and note/label.
+- Added consecutive-failure Offline confirmation and minimum-offline-duration Recovery suppression while retaining technical error counts and history.
+- Added additive `notify` and `deviceClass` fields to observations and emitted device events without changing existing schema identifiers or output positions.
+- Added the lazy-loading, manually refreshed Device Settings configuration tab and its read-protected, no-store inventory endpoint.
+- Added device class and active override information to Monitor Device Details and Maintenance Device Overview.
+- Added a `notify === true` routing example and full English/German documentation and help updates.
+- Existing 0.4.x configurations migrate to Standard/no overrides with concrete defaults.
+- Completed per-device and per-class reboot interval, immediate/maintenance-window mode and window-time inheritance; the scheduler now demonstrably selects devices from each effective value and exposes value origins plus `scheduledFor`.
+- Added persistent planned/requested/unexpected reboot classification, estimated reboot/detection times, current uptime and uptime before the last reboot to Monitor Device Details, Maintenance Device Overview and Config Device Settings.
+- Added the general, migration-safe **Show beta firmware notices** option (default off). Beta-only availability remains machine-readable when off; when enabled, a notice opens only once per device and beta version, with persisted de-duplication.
+- Added `uptimeSec`, `uptimeText` and `uptimeTextDe` to every Warning/Critical observation, finding card and temperature event, including explicit unavailable text in human summaries and notification examples.
+- Expanded regression coverage for reboot-history persistence, Standard/named class inheritance, real scheduler selection, beta-notice suppression/de-duplication, bilingual uptime text and migration.
+
 ## 0.4.1
 
 - Added immediate and maintenance-window scheduled reboot modes.

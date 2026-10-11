@@ -73,6 +73,9 @@ function abortablePending(signal, onAbort) {
 
 test("the 0.3.0 action schema validates node-specific commands and lifecycle snapshots", () => {
   assert.deepEqual(ACTIONS.discovery, ["start", "scan", "full", "incremental", "cancel", "status"]);
+  assert.ok(ACTIONS.monitor.includes("refresh-device"));
+  assert.ok(ACTIONS.monitor.includes("wait-device"));
+  assert.ok(ACTIONS.monitor.includes("remove-device"));
   assert.equal(normalizeAction("monitor", "CHECK"), "check");
   assert.throws(() => normalizeAction("maintenance", "format"), (error) => error.code === "ERR_ACTION" && error.details.supported.includes("cancel"));
   const run = createRun("discovery", "scan", 10);
@@ -83,6 +86,62 @@ test("the 0.3.0 action schema validates node-specific commands and lifecycle sna
   assert.equal(event.processed, 3);
   assert.equal(snapshot("discovery", run).active, true);
   assert.equal(snapshot("monitor", null).active, false);
+});
+
+test("completed full scan separates currently found devices from retained inventory and direct reachability", async () => {
+  const value = await runtime({ offlineFailureThreshold: 3 });
+  value.inventory.upsert(device("stored-device", "192.168.50.2"), { timestamp: "2026-10-10T08:00:00.000Z" });
+  value.client = { probe: async () => { throw Object.assign(new Error("powered off"), { code: "ETIMEDOUT", retryable: true }); } };
+  const result = await value.scan({ mode: "full" });
+  assert.equal(result.summary.inventoryCount, 1, "persistent inventory is intentionally retained");
+  assert.equal(result.summary.foundThisScan, 0);
+  assert.equal(result.summary.notFoundThisScan, 1);
+  assert.equal(result.summary.reachable, 0, "reachable means found in this scan, not cached reachability");
+  assert.equal(result.foundDevices.length, 0);
+  assert.equal(result.devices.length, 1);
+  assert.equal(result.devices[0].lastScan.status, "not-found");
+  assert.equal(result.devices[0].directReachable, false);
+  assert.equal(result.devices[0].reachable, false, "public reachability reflects the latest direct probe");
+  assert.equal(result.devices[0].confirmedOffline, false, "alert confirmation remains separate from latest direct reachability");
+});
+
+test("completed full scan marks retained devices outside its target scope as not-scanned", async () => {
+  const value = await runtime({ targets: "192.168.50.1-2" });
+  value.inventory.upsert(device("outside", "192.168.60.8"));
+  value.client = { probe: async (ip) => device(`found-${ip}`, ip) };
+  const result = await value.scan({ mode: "full" });
+  assert.equal(result.summary.foundThisScan, 2);
+  assert.equal(result.summary.inventoryNotScanned, 1);
+  assert.equal(result.devices.find((item) => item.id === "outside").lastScan.status, "not-scanned");
+});
+
+test("device refresh, wait and remove update or purge operational state", async () => {
+  const value = await runtime();
+  value.inventory.upsert(device("device-1", "192.168.50.1"));
+  value.client = { probe: async () => ({ ...device("device-1", "192.168.50.1"), name: "Reloaded" }) };
+  const refreshed = await value.refreshDevice("device-1");
+  assert.equal(refreshed.details.identity.name, "Reloaded");
+  assert.equal(value.inventory.get("device-1").directReachable, true);
+
+  value.client.probe = async () => { throw Object.assign(new Error("unreachable"), { code: "ETIMEDOUT", retryable: true }); };
+  await assert.rejects(value.refreshDevice("device-1"), (error) => error.code === "ETIMEDOUT" && error.details.deviceId === "device-1");
+  assert.equal(value.inventory.get("device-1").directReachable, false);
+
+  value.client.waitReachable = async () => ({ ...device("device-1", "192.168.50.1"), name: "Back online" });
+  const waited = await value.refreshDevice("device-1", { wait: true, timeoutMs: 1000, intervalMs: 500 });
+  assert.equal(waited.details.identity.name, "Back online");
+
+  value.anomalies.state.devices["device-1"] = { metrics: {} };
+  value.temperatureSafety.state.devices["device-1"] = { level: "normal" };
+  value.scheduledRebootState.devices["device-1"] = {};
+  value.monitorScheduleState.devices["device-1"] = "2026-10-10T08:00:00.000Z";
+  const removed = await value.removeDevice("device-1");
+  assert.equal(removed.removed.id, "device-1");
+  assert.equal(removed.configurationRetained, true);
+  assert.equal(value.inventory.get("device-1"), null);
+  assert.equal(value.history.devices["device-1"], undefined);
+  assert.equal(value.anomalies.state.devices["device-1"], undefined);
+  assert.equal(value.temperatureSafety.state.devices["device-1"], undefined);
 });
 
 test("discovery cancellation stops scheduling, keeps completed probes and does not finish the full scan", async () => {
@@ -169,4 +228,26 @@ test("HTTP requests are destroyed by AbortSignal with a structured abort error",
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
+});
+
+
+test("successful device probe is not marked unreachable when persistence fails", async () => {
+  const value = await runtime();
+  value.inventory.upsert(device("device-save", "192.168.50.4"));
+  value.client = { probe: async () => ({ ...device("device-save", "192.168.50.4"), name: "Fresh" }) };
+  value.persistence.save = async () => { throw Object.assign(new Error("disk full"), { code: "ERR_PERSISTENCE" }); };
+  await assert.rejects(value.refreshDevice("device-save"), (error) => error.code === "ERR_PERSISTENCE");
+  assert.equal(value.inventory.get("device-save").directReachable, true);
+  assert.equal(value.inventory.get("device-save").lastError, undefined);
+});
+
+
+test("failed persistence rolls back manual device removal", async () => {
+  const value = await runtime();
+  value.inventory.upsert(device("device-remove", "192.168.50.5"));
+  value.history.add(value.inventory.get("device-remove"));
+  value.persistence.save = async () => { throw Object.assign(new Error("disk full"), { code: "ERR_PERSISTENCE" }); };
+  await assert.rejects(value.removeDevice("device-remove"), (error) => error.code === "ERR_PERSISTENCE");
+  assert.ok(value.inventory.get("device-remove"));
+  assert.ok(value.history.devices["device-remove"]);
 });

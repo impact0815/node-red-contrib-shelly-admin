@@ -22,7 +22,8 @@
       "allowBeta": "Allow beta",
       "current": "Current state only",
       "transitions": "Transitions only",
-      "currentAndTransitions": "Current state and transitions"
+      "currentAndTransitions": "Current state and transitions",
+      "noAutomaticUpdates": "No automatic updates"
     },
     "output": {
       "health": "health",
@@ -137,7 +138,57 @@
       "baselines": "Available baselines",
       "noBaselines": "No baseline is available yet.",
       "resolvedErrors": "Resolved errors",
-      "noResolved": "No resolved errors are stored."
+      "noResolved": "No resolved errors are stored.",
+      "deviceClass": "Device class",
+      "overrides": "Device overrides",
+      "inherited": "None (inherited)",
+      "note": "Note / label",
+      "currentUptime": "Current uptime",
+      "uptimeBeforeReboot": "Uptime before last reboot",
+      "lastReboot": "Last reboot",
+      "rebootType": "Reboot classification",
+      "rebootInterval": "Effective reboot interval",
+      "rebootMode": "Effective reboot mode",
+      "rebootWindow": "Effective maintenance-window time",
+      "nextReboot": "Next planned reboot",
+      "sortBy": "Sort by",
+      "sortType": "Type",
+      "sortName": "Name",
+      "sortIp": "IP",
+      "name": "Name",
+      "nameUnset": "No name is set on the device (fallback shown above).",
+      "typesAllAction": "All",
+      "typesNoneAction": "None",
+      "typesAll": "Types: all",
+      "typesCount": "Types: {selected} of {total}",
+      "noTypeMatch": "No devices match the type filter.",
+      "reloadAll": "Reload all data",
+      "remove": "Remove",
+      "reloading": "Reloading all device data…",
+      "waiting": "Waiting for the device…",
+      "removing": "Removing device…",
+      "removed": "Device removed from the persistent inventory.",
+      "reloaded": "Device data reloaded successfully.",
+      "reloadError": "The device could not be reached.",
+      "retry": "Retry",
+      "waitRetry": "Retry / Wait",
+      "removeConfirm": "Remove this device and its operational history from the persistent inventory? Class/override configuration is retained for safe rediscovery.",
+      "inventoryState": "Inventory state",
+      "inventoryStored": "Stored persistent entry",
+      "lastScan": "Last inventory scan",
+      "scanFound": "Found in that scan",
+      "scanNotFound": "Not found in that scan",
+      "scanNotScanned": "Outside scan scope / not processed"
+    },
+    "origin": {
+      "global": "general",
+      "class": "class",
+      "device": "device"
+    },
+    "rebootType": {
+      "planned": "Planned",
+      "requested": "Requested",
+      "unexpected": "Unexpected"
     }
   }
 }

@@ -28,6 +28,9 @@
       monitorConcurrency: 16,
       timeoutMs: 2500,
       firmwareCheckTimeoutMs: 2500,
+      pollIntervalSeconds: 60,
+      offlineFailureThreshold: 3,
+      recoveryMinOfflineMinutes: 5,
       scheduledRebootIntervalDays: 7,
       maintenanceDeviceTimeoutSeconds: 15,
       maintenanceRunTimeoutSeconds: 900,
@@ -70,6 +73,321 @@
       Sensitive: { anomalyMinSamples: 10, anomalyWarmupSamples: 5, anomalyTriggerConsecutive: 2, anomalyClearConsecutive: 2, anomalyCooldownMinutes: 30 }
     };
 
+    var deviceFields = [
+      { key: "monitoringEnabled", type: "boolean" },
+      { key: "pollIntervalSeconds", type: "number" },
+      { key: "offlineDetectionEnabled", type: "boolean" },
+      { key: "offlineFailureThreshold", type: "number" },
+      { key: "recoveryMinOfflineMinutes", type: "number" },
+      { key: "notifyOffline", type: "boolean" },
+      { key: "notifyRecovery", type: "boolean" },
+      { key: "notifyFirmware", type: "boolean" },
+      { key: "notifyTemperature", type: "boolean" },
+      { key: "notifyReboot", type: "boolean" },
+      { key: "firmwarePolicy", type: "enum", values: ["stable", "allow-beta", "disabled"] },
+      { key: "autoRebootEnabled", type: "boolean" },
+      { key: "autoRebootIntervalDays", type: "number" },
+      { key: "autoRebootMode", type: "enum", values: ["immediate", "maintenance-window"] },
+      { key: "autoRebootTime", type: "time" },
+      { key: "temperatureWarningC", type: "number" },
+      { key: "temperatureCriticalC", type: "number" },
+      { key: "rawRetentionHours", type: "number" },
+      { key: "aggregateRetentionDays", type: "number" },
+      { key: "deviceNote", type: "string" },
+      { key: "detailLevel", type: "enum", values: ["normal", "verbose"] }
+    ];
+    var classPresets = {
+      standard: {},
+      critical: { firmwarePolicy: "disabled", autoRebootEnabled: false, offlineFailureThreshold: 1, notifyOffline: true },
+      test: { firmwarePolicy: "allow-beta", recoveryMinOfflineMinutes: 0, notifyOffline: true, notifyRecovery: true, notifyFirmware: true, notifyTemperature: true, notifyReboot: true, detailLevel: "verbose" },
+      "poor-connection": { pollIntervalSeconds: 300, offlineFailureThreshold: 5, recoveryMinOfflineMinutes: 15 }
+    };
+
+    function parseMap(value) {
+      try { var parsed = JSON.parse(value || "{}"); return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {}; }
+      catch (_error) { return {}; }
+    }
+    function fieldLabel(node, key) {
+      return text(node, "shelly-admin-config.deviceField." + key, {}, key);
+    }
+    function classLabel(node, key) {
+      return text(node, "shelly-admin-config.deviceClass." + key, {}, key);
+    }
+    function german() { return Boolean(RED.settings && /^de(?:-|$)/i.test(RED.settings.lang || "")); }
+    function missing(node) { return text(node, "shelly-admin-config.common.unavailable", {}, german() ? "Nicht verfügbar" : "Not available"); }
+    function deviceIdentity(device) {
+      var name = device && device.name !== null && device.name !== undefined ? String(device.name).trim() : "";
+      var hostname = device && device.hostname !== null && device.hostname !== undefined ? String(device.hostname).trim() : "";
+      return { name: name, displayName: name || hostname || device && device.id || device && device.ip || (german() ? "Unbekanntes Gerät" : "Unknown device"), fallback: !name };
+    }
+    function compareText(left, right) { return String(left || "").localeCompare(String(right || ""), undefined, { sensitivity: "base", numeric: true }); }
+    function ipParts(value) { var parts = String(value || "").split("."); return parts.length === 4 && parts.every(function (part) { return /^\d{1,3}$/.test(part) && Number(part) <= 255; }) ? parts.map(Number) : null; }
+    function compareIp(left, right) { var a = ipParts(left); var b = ipParts(right); if (a && b) { for (var index = 0; index < 4; index += 1) { if (a[index] !== b[index]) return a[index] - b[index]; } return 0; } if (a) return -1; if (b) return 1; return compareText(left, right); }
+    function sortDevices(devices, mode) { return (devices || []).slice().sort(function (a, b) { var byName = compareText(deviceIdentity(a).displayName, deviceIdentity(b).displayName); if (mode === "ip") return compareIp(a.ip, b.ip) || byName; if (mode === "type") return compareText(a.model || a.type || a.modelCode, b.model || b.type || b.modelCode) || byName || compareIp(a.ip, b.ip); return byName || compareIp(a.ip, b.ip); }); }
+    function sortStorage(key, value) { try { if (window.localStorage) { if (value) window.localStorage.setItem(key, value); return window.localStorage.getItem(key); } } catch (_error) { /* storage can be disabled */ } return null; }
+    function deviceTypeKey(device) { return String(device && (device.model || device.type || device.modelCode) || (german() ? "Unbekannt" : "Unknown")); }
+    function loadTypeFilter(storageKey, types) {
+      var raw = sortStorage(storageKey); var selected = null;
+      try { var parsed = raw && JSON.parse(raw); if (parsed && parsed.all === true) return types.slice(); if (parsed && Array.isArray(parsed.selected)) selected = parsed.selected.map(String); } catch (_error) { selected = null; }
+      if (selected === null) return types.slice();
+      return selected.filter(function (value) { return types.indexOf(value) >= 0; });
+    }
+    function saveTypeFilter(storageKey, selected, types) { sortStorage(storageKey, JSON.stringify({ all: Array.isArray(types) && selected.length === types.length, selected: selected.slice() })); }
+    function filterDeviceTypes(devices, selectedTypes) {
+      return (devices || []).filter(function (device) { return selectedTypes.indexOf(deviceTypeKey(device)) >= 0; });
+    }
+    function appendDeviceParts(parent, device, sortBy) {
+      var identity = deviceIdentity(device);
+      var partsByKey = {
+        name: { key: "name", value: identity.displayName, fallback: identity.fallback },
+        type: { key: "type", value: device.model || device.type || device.modelCode || (german() ? "Unbekannt" : "Unknown") },
+        ip: { key: "ip", value: device.ip || (german() ? "Nicht verfügbar" : "Not available") }
+      };
+      var order = sortBy === "type" ? ["type", "name", "ip"] : sortBy === "ip" ? ["ip", "name", "type"] : ["name", "type", "ip"];
+      var parts = order.map(function (key) { return partsByKey[key]; });
+      parts.forEach(function (part, index) {
+        if (index) parent.appendChild(document.createTextNode(" · "));
+        var element = document.createElement(part.key === sortBy ? "strong" : "span");
+        element.textContent = part.value;
+        element.className = "shelly-device-part shelly-device-part-" + part.key + (part.fallback ? " fallback" : "");
+        parent.appendChild(element);
+      });
+    }
+    function renderDeviceDropdown(options) {
+      if (typeof document === "undefined") return;
+      var root = document.getElementById(options.rootId); var hidden = document.getElementById(options.hiddenId);
+      if (!root || !hidden) return;
+      if (typeof root._shellyCleanup === "function") root._shellyCleanup();
+      root.innerHTML = ""; var devices = options.devices || []; var selected = devices.some(function (item) { return String(item.id) === String(options.selected); }) ? options.selected : devices[0] && devices[0].id;
+      hidden.value = selected || "";
+      var trigger = document.createElement("button"); trigger.type = "button"; trigger.className = "red-ui-button shelly-device-dropdown-trigger"; trigger.setAttribute("aria-haspopup", "listbox"); trigger.setAttribute("aria-expanded", "false");
+      var menu = document.createElement("div"); menu.className = "shelly-device-dropdown-menu"; menu.setAttribute("role", "listbox"); menu.hidden = true;
+      root.appendChild(trigger); root.appendChild(menu);
+      var activeIndex = Math.max(0, devices.findIndex(function (item) { return String(item.id) === String(selected); })); var rows = [];
+      function renderTrigger() { trigger.innerHTML = ""; var current = devices.find(function (item) { return String(item.id) === String(hidden.value); }); if (current) { appendDeviceParts(trigger, current, options.sortBy); trigger.title = [deviceIdentity(current).displayName, current.model || current.type, current.ip].filter(Boolean).join(" · "); } else { trigger.textContent = options.emptyText; trigger.title = options.emptyText; } }
+      function focusActive() { rows.forEach(function (row, index) { row.classList.toggle("active", index === activeIndex); }); var row = rows[activeIndex]; if (row) { row.focus(); row.scrollIntoView({ block: "nearest" }); } }
+      function close(focusTrigger) { menu.hidden = true; trigger.setAttribute("aria-expanded", "false"); if (focusTrigger) trigger.focus(); }
+      function open(direction) { if (!rows.length) return; menu.hidden = false; trigger.setAttribute("aria-expanded", "true"); if (direction === "last") activeIndex = rows.length - 1; else { var index = devices.findIndex(function (item) { return String(item.id) === String(hidden.value); }); activeIndex = index >= 0 ? index : 0; } focusActive(); }
+      function choose(index) { var device = devices[index]; if (!device) return; hidden.value = device.id; activeIndex = index; renderTrigger(); rows.forEach(function (row) { row.setAttribute("aria-selected", String(row.dataset.deviceId) === String(device.id) ? "true" : "false"); }); close(true); options.onSelect(device.id); }
+      function keydown(event) { if (!event) return; if (event.key === "ArrowDown") { event.preventDefault(); if (menu.hidden) open("first"); else { activeIndex = Math.min(rows.length - 1, activeIndex + 1); focusActive(); } } else if (event.key === "ArrowUp") { event.preventDefault(); if (menu.hidden) open("last"); else { activeIndex = Math.max(0, activeIndex - 1); focusActive(); } } else if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (menu.hidden) open("first"); else choose(activeIndex); } else if (event.key === "Escape") { event.preventDefault(); close(true); } }
+      devices.forEach(function (device, index) { var row = document.createElement("button"); row.type = "button"; row.className = "shelly-device-dropdown-option"; row.dataset.deviceId = device.id; row.setAttribute("role", "option"); row.setAttribute("aria-selected", String(device.id) === String(selected) ? "true" : "false"); row.title = [deviceIdentity(device).displayName, device.model || device.type, device.ip].filter(Boolean).join(" · "); appendDeviceParts(row, device, options.sortBy); row.addEventListener("click", function () { choose(index); }); row.addEventListener("keydown", keydown); menu.appendChild(row); rows.push(row); });
+      trigger.addEventListener("click", function () { if (menu.hidden) open("first"); else close(false); }); trigger.addEventListener("keydown", keydown); renderTrigger();
+      function outside(event) { if (!root.contains(event.target)) close(false); }
+      document.addEventListener("mousedown", outside); root._shellyCleanup = function () { document.removeEventListener("mousedown", outside); };
+    }
+    function renderTypeFilter(options) {
+      if (typeof document === "undefined") return options.types || [];
+      var root = document.getElementById(options.rootId); if (!root) return options.types || [];
+      if (typeof root._shellyCleanup === "function") root._shellyCleanup();
+      root.innerHTML = ""; var types = options.types || []; var selected = loadTypeFilter(options.storageKey, types);
+      var trigger = document.createElement("button"); trigger.type = "button"; trigger.className = "red-ui-button shelly-type-filter-trigger"; trigger.setAttribute("aria-haspopup", "true"); trigger.setAttribute("aria-expanded", "false");
+      var menu = document.createElement("div"); menu.className = "shelly-type-filter-menu"; menu.hidden = true; root.appendChild(trigger); root.appendChild(menu);
+      var actions = document.createElement("div"); actions.className = "shelly-type-filter-actions"; menu.appendChild(actions);
+      var allButton = document.createElement("button"); allButton.type = "button"; allButton.className = "red-ui-button"; allButton.textContent = options.allText; actions.appendChild(allButton);
+      var noneButton = document.createElement("button"); noneButton.type = "button"; noneButton.className = "red-ui-button"; noneButton.textContent = options.noneText; actions.appendChild(noneButton);
+      var boxes = [];
+      function updateLabel() { trigger.textContent = selected.length === types.length ? options.allLabel : options.countLabel.replace("{selected}", selected.length).replace("{total}", types.length); trigger.title = selected.length ? selected.join(", ") : options.noneText; }
+      function commit() { selected = boxes.filter(function (entry) { return entry.input.checked; }).map(function (entry) { return entry.type; }); saveTypeFilter(options.storageKey, selected, types); updateLabel(); options.onChange(selected.slice()); }
+      types.forEach(function (type) { var labelElement = document.createElement("label"); labelElement.className = "shelly-type-filter-option"; labelElement.title = type; var input = document.createElement("input"); input.type = "checkbox"; input.checked = selected.indexOf(type) >= 0; var span = document.createElement("span"); span.textContent = type; labelElement.appendChild(input); labelElement.appendChild(span); input.addEventListener("change", commit); menu.appendChild(labelElement); boxes.push({ type: type, input: input }); });
+      allButton.addEventListener("click", function () { boxes.forEach(function (entry) { entry.input.checked = true; }); commit(); }); noneButton.addEventListener("click", function () { boxes.forEach(function (entry) { entry.input.checked = false; }); commit(); });
+      trigger.addEventListener("click", function () { menu.hidden = !menu.hidden; trigger.setAttribute("aria-expanded", String(!menu.hidden)); }); trigger.addEventListener("keydown", function (event) { if (event.key === "Escape") { menu.hidden = true; trigger.setAttribute("aria-expanded", "false"); trigger.focus(); } });
+      function outside(event) { if (!root.contains(event.target)) { menu.hidden = true; trigger.setAttribute("aria-expanded", "false"); } }
+      document.addEventListener("mousedown", outside); root._shellyCleanup = function () { document.removeEventListener("mousedown", outside); }; updateLabel(); return selected;
+    }
+    function formatDuration(node, seconds) {
+      if (seconds === null || seconds === undefined || seconds === "" || !Number.isFinite(Number(seconds))) return missing(node);
+      var value = Math.max(0, Math.floor(Number(seconds)));
+      var days = Math.floor(value / 86400);
+      var hours = Math.floor((value % 86400) / 3600);
+      var minutes = Math.floor((value % 3600) / 60);
+      var parts = [];
+      if (days) parts.push(days + (german() ? (days === 1 ? " Tag" : " Tage") : (days === 1 ? " day" : " days")));
+      if (hours) parts.push(hours + (german() ? " Std" : " h"));
+      if (!days && minutes) parts.push(minutes + " min");
+      return parts.join(" ") || (german() ? "unter 1 min" : "less than 1 min");
+    }
+    function timestampText(node, value) {
+      if (!value || !Number.isFinite(Date.parse(value))) return missing(node);
+      try { return new Date(value).toLocaleString(german() ? "de-DE" : "en-US"); } catch (_error) { return value; }
+    }
+    function addRuntimeValue(host, labelText, value) {
+      $("<dt>").text(labelText).appendTo(host);
+      $("<dd>").text(value).appendTo(host);
+    }
+    function rebootType(node, value) {
+      return value ? text(node, "shelly-admin-config.rebootType." + value, {}, value) : missing(node);
+    }
+    function settingInput(field, value) {
+      var input;
+      if (field.type === "boolean") {
+        input = $("<select>").append($("<option>").val("true").text("true"), $("<option>").val("false").text("false"));
+        input.val(String(value));
+      } else if (field.type === "enum") {
+        input = $("<select>");
+        field.values.forEach(function (item) { input.append($("<option>").val(item).text(item)); });
+        input.val(value);
+      } else {
+        input = $("<input>").attr("type", field.type === "string" ? "text" : field.type).val(value === undefined ? "" : value);
+      }
+      return input.addClass("shelly-device-setting-value");
+    }
+    function globalSettingValue(key) {
+      var map = {
+        autoRebootEnabled: "scheduledRebootEnabled", autoRebootIntervalDays: "scheduledRebootIntervalDays",
+        autoRebootMode: "scheduledRebootMode", autoRebootTime: "scheduledRebootTime"
+      };
+      var name = map[key] || key;
+      var field = deviceFields.find(function (item) { return item.key === key; });
+      var input = $("#node-config-input-" + name);
+      if (field && field.type === "boolean") return input.prop("checked");
+      if (field && field.type === "number") return Number(input.val());
+      return input.val();
+    }
+    function renderSettingsEditor(node, hostSelector, values, changed, inheritedValues) {
+      var host = $(hostSelector).empty();
+      deviceFields.forEach(function (field) {
+        var row = $("<div>").addClass("shelly-device-setting-row").attr("data-setting", field.key).appendTo(host);
+        var enabled = Object.prototype.hasOwnProperty.call(values, field.key);
+        var inherited = inheritedValues && Object.prototype.hasOwnProperty.call(inheritedValues, field.key) ? inheritedValues[field.key] : globalSettingValue(field.key);
+        $("<label>").text(fieldLabel(node, field.key)).appendTo(row);
+        var inherit = $("<input>").attr("type", "checkbox").prop("checked", !enabled).appendTo(row);
+        $("<span>").text(text(node, "shelly-admin-config.deviceSettings.inherit", {}, "Inherit")).appendTo(row);
+        var input = settingInput(field, enabled ? values[field.key] : inherited).prop("disabled", !enabled).appendTo(row);
+        inherit.on("change.shellyAdmin", function () {
+          if ($(this).prop("checked")) delete values[field.key];
+          else values[field.key] = field.type === "boolean" ? input.val() === "true" : field.type === "number" ? Number(input.val()) : input.val();
+          input.prop("disabled", $(this).prop("checked"));
+          changed();
+        });
+        input.on("change.shellyAdmin input.shellyAdmin", function () {
+          if (inherit.prop("checked")) return;
+          values[field.key] = field.type === "boolean" ? input.val() === "true" : field.type === "number" ? Number(input.val()) : input.val();
+          changed();
+        });
+      });
+    }
+    function effectiveFor(node, deviceId) {
+      var entry = node._shellyDeviceSettings[deviceId] || { deviceClass: "standard", overrides: {} };
+      var classId = entry.deviceClass || "standard";
+      var classValues = $.extend({}, classPresets[classId] || {}, node._shellyClassSettings[classId] || {});
+      var effective = {}; var origins = {};
+      deviceFields.forEach(function (field) { effective[field.key] = globalSettingValue(field.key); origins[field.key] = "global"; });
+      Object.keys(classValues).forEach(function (key) { effective[key] = classValues[key]; origins[key] = "class"; });
+      Object.keys(entry.overrides || {}).forEach(function (key) { effective[key] = entry.overrides[key]; origins[key] = "device"; });
+      return { effective: effective, origins: origins };
+    }
+    function renderEffective(node, deviceId) {
+      var host = $("#node-config-device-effective").empty();
+      if (!deviceId) return;
+      var resolved = effectiveFor(node, deviceId);
+      deviceFields.forEach(function (field) {
+        var row = $("<div>").addClass("shelly-device-effective-row").appendTo(host);
+        $("<strong>").text(fieldLabel(node, field.key)).appendTo(row);
+        $("<span>").text(String(resolved.effective[field.key])).appendTo(row);
+        $("<em>").text(text(node, "shelly-admin-config.origin." + resolved.origins[field.key], {}, resolved.origins[field.key])).appendTo(row);
+      });
+    }
+    function renderClassEditor(node) {
+      var classId = $("#node-config-device-class-select").val() || "standard";
+      node._shellyClassSettings[classId] = node._shellyClassSettings[classId] || {};
+      renderSettingsEditor(node, "#node-config-device-class-fields", node._shellyClassSettings[classId], function () {
+        renderEffective(node, $("#node-config-device-selector").val());
+        renderClassMembers(node, classId);
+      }, classPresets[classId] || {});
+      renderClassMembers(node, classId);
+    }
+    function renderClassMembers(node, classId) {
+      var host = $("#node-config-device-class-members").empty();
+      var classValues = $.extend({}, classPresets[classId] || {}, node._shellyClassSettings[classId] || {});
+      var effective = {
+        enabled: Object.prototype.hasOwnProperty.call(classValues, "autoRebootEnabled") ? classValues.autoRebootEnabled : globalSettingValue("autoRebootEnabled"),
+        interval: Object.prototype.hasOwnProperty.call(classValues, "autoRebootIntervalDays") ? classValues.autoRebootIntervalDays : globalSettingValue("autoRebootIntervalDays"),
+        mode: Object.prototype.hasOwnProperty.call(classValues, "autoRebootMode") ? classValues.autoRebootMode : globalSettingValue("autoRebootMode"),
+        time: Object.prototype.hasOwnProperty.call(classValues, "autoRebootTime") ? classValues.autoRebootTime : globalSettingValue("autoRebootTime")
+      };
+      $("<div>").addClass("shelly-class-window-summary").text([
+        effective.enabled ? text(node, "shelly-admin-config.classWindow.enabled", {}, "Reboot enabled") : text(node, "shelly-admin-config.classWindow.disabled", {}, "Reboot disabled"),
+        effective.interval + " " + (german() ? "Tage" : "days"), effective.mode, effective.mode === "maintenance-window" ? effective.time : null
+      ].filter(Boolean).join(" · ")).appendTo(host);
+      var devices = Object.keys(node._shellyRuntimeDevices || {}).map(function (id) { return node._shellyRuntimeDevices[id]; }).filter(function (device) {
+        var entry = node._shellyDeviceSettings[device.id] || {};
+        return (entry.deviceClass || device.deviceClass || "standard") === classId;
+      });
+      if (!devices.length) { $("<div>").addClass("form-tips").text(text(node, "shelly-admin-config.classWindow.noDevices", {}, "No inventoried devices belong to this class.")).appendTo(host); return; }
+      devices.sort(function (a, b) { return compareText(deviceIdentity(a).displayName, deviceIdentity(b).displayName); }).forEach(function (device) {
+        var identity = deviceIdentity(device); var row = $("<div>").addClass("shelly-class-member").appendTo(host);
+        $("<strong>").addClass(identity.fallback ? "fallback" : "").attr("title", identity.displayName).text(identity.displayName).appendTo(row);
+        $("<span>").text([device.model || missing(node), device.ip || missing(node), text(node, "shelly-admin-config.classWindow.nextReboot", {}, "Next reboot") + ": " + timestampText(node, device.scheduledReboot && device.scheduledReboot.scheduledFor)].join(" · ")).appendTo(row);
+      });
+    }
+    function renderDeviceRuntime(node, id) {
+      var host = $("#node-config-device-runtime").empty();
+      var device = node._shellyRuntimeDevices && node._shellyRuntimeDevices[id];
+      if (!device) { $("<div>").addClass("form-tips").text(missing(node)).appendTo(host); return; }
+      var identity = deviceIdentity(device);
+      $("#node-config-device-heading").toggleClass("fallback", identity.fallback).attr("title", identity.displayName).text(identity.displayName);
+      var fields = $("<dl>").addClass("shelly-device-runtime-fields").appendTo(host);
+      addRuntimeValue(fields, text(node, "shelly-admin-config.deviceRuntime.name", {}, "Name"), identity.name || text(node, "shelly-admin-config.deviceRuntime.nameUnset", {}, "No name is set on the device (fallback shown above)."));
+      addRuntimeValue(fields, text(node, "shelly-admin-config.deviceRuntime.model", {}, "Model"), device.model || missing(node));
+      addRuntimeValue(fields, text(node, "shelly-admin-config.deviceRuntime.ip", {}, "IP address"), device.ip || missing(node));
+      addRuntimeValue(fields, text(node, "shelly-admin-config.deviceRuntime.lastScan", {}, "Last inventory scan"), device.lastScan ? [device.lastScan.mode, device.lastScan.status, timestampText(node, device.lastScan.at)].filter(Boolean).join(" · ") : missing(node));
+      addRuntimeValue(fields, text(node, "shelly-admin-config.deviceRuntime.currentUptime", {}, "Current uptime"), formatDuration(node, device.currentUptimeSec));
+      addRuntimeValue(fields, text(node, "shelly-admin-config.deviceRuntime.uptimeBeforeReboot", {}, "Uptime before last reboot"), formatDuration(node, device.uptimeBeforeLastRebootSec));
+      addRuntimeValue(fields, text(node, "shelly-admin-config.deviceRuntime.lastReboot", {}, "Last reboot"), timestampText(node, device.lastRebootAt));
+      addRuntimeValue(fields, text(node, "shelly-admin-config.deviceRuntime.rebootType", {}, "Reboot classification"), rebootType(node, device.lastRebootType));
+      addRuntimeValue(fields, text(node, "shelly-admin-config.deviceRuntime.nextReboot", {}, "Next planned reboot"), timestampText(node, device.scheduledReboot && device.scheduledReboot.scheduledFor));
+    }
+    function renderDeviceEditor(node) {
+      var id = $("#node-config-device-selector").val();
+      var host = $("#node-config-device-overrides").empty();
+      if (!id) { $("#node-config-device-effective,#node-config-device-runtime,#node-config-device-heading").empty(); return; }
+      var entry = node._shellyDeviceSettings[id] || { deviceClass: "standard", overrides: {} };
+      node._shellyDeviceSettings[id] = entry;
+      $("#node-config-device-class").val(entry.deviceClass || "standard");
+      var inherited = $.extend({}, classPresets[entry.deviceClass] || {}, node._shellyClassSettings[entry.deviceClass] || {});
+      renderSettingsEditor(node, host, entry.overrides, function () { renderEffective(node, id); }, inherited);
+      renderEffective(node, id);
+      renderDeviceRuntime(node, id);
+    }
+    function renderDeviceList(node, response) {
+      var select = $("#node-config-device-selector");
+      var selectedBefore = select.val() || node._shellySelectedDeviceId;
+      var sortBy = $("#node-config-device-sort").val() || sortStorage("shelly-admin:sort:config-devices") || "name";
+      $("#node-config-device-sort").val(sortBy);
+      node._shellyRuntimeDevices = {};
+      var allDevices = response.devices || [];
+      allDevices.forEach(function (device) {
+        node._shellyRuntimeDevices[device.id] = device;
+        if (!node._shellyDeviceSettings[device.id]) node._shellyDeviceSettings[device.id] = { deviceClass: device.deviceClass || "standard", overrides: device.overrides || {} };
+      });
+      var types = Array.from(new Set(allDevices.map(deviceTypeKey))).sort(compareText);
+      var selectedTypes = renderTypeFilter({
+        rootId: "node-config-device-type-filter", types: types, storageKey: "shelly-admin:types:config-devices",
+        allText: text(node, "shelly-admin-config.deviceSettings.typesAllAction", {}, "All"), noneText: text(node, "shelly-admin-config.deviceSettings.typesNoneAction", {}, "None"),
+        allLabel: text(node, "shelly-admin-config.deviceSettings.typesAll", {}, "Types: all"), countLabel: text(node, "shelly-admin-config.deviceSettings.typesCount", {}, "Types: {selected} of {total}"),
+        onChange: function () { renderDeviceList(node, { devices: allDevices }); }
+      });
+      var devices = sortDevices(filterDeviceTypes(allDevices, selectedTypes), sortBy);
+      var selected = selectedBefore && devices.some(function (device) { return String(device.id) === String(selectedBefore); }) ? selectedBefore : devices[0] && devices[0].id;
+      node._shellySelectedDeviceId = selected || null;
+      select.val(selected || "");
+      renderDeviceDropdown({ rootId: "node-config-device-dropdown", hiddenId: "node-config-device-selector", devices: devices, selected: selected, sortBy: sortBy, emptyText: text(node, "shelly-admin-config.deviceSettings.noTypeMatch", {}, "No devices match the type filter."), onSelect: function (id) { node._shellySelectedDeviceId = id; select.val(id); renderDeviceEditor(node); } });
+      renderDeviceEditor(node);
+      renderClassEditor(node);
+    }
+    function loadDeviceSettings(node, preserve) {
+      var selected = preserve ? $("#node-config-device-selector").val() : null;
+      $("#node-config-device-settings-status").text(text(node, "shelly-admin-config.deviceSettings.loading", {}, "Loading devices…"));
+      $.ajax({ url: "shelly-admin/config/" + encodeURIComponent(node.id) + "/device-settings", type: "GET", dataType: "json", cache: false })
+        .done(function (response) { if (selected) node._shellySelectedDeviceId = selected; $("#node-config-device-settings-status").text(""); renderDeviceList(node, response || {}); })
+        .fail(function () { $("#node-config-device-settings-status").text(text(node, "shelly-admin-config.deviceSettings.loadError", {}, "Deploy this configuration node before loading its inventory.")); });
+    }
+    function activateConfigTab(node, name) {
+      $(".shelly-config-tab-button").each(function () { $(this).toggleClass("active", $(this).attr("data-tab") === name); });
+      $(".shelly-config-tab-panel").each(function () { $(this).toggle($(this).attr("data-panel") === name); });
+      if (name === "devices" && !node._shellyDeviceSettingsLoaded) { node._shellyDeviceSettingsLoaded = true; loadDeviceSettings(node); }
+    }
+
     RED.nodes.registerType("shelly-admin-config", {
       category: "config",
       defaults: {
@@ -83,6 +401,21 @@
         timeoutMs: { value: 2500, validate: RED.validators.number() },
         firmwareCheckTimeoutMs: { value: 2500, validate: RED.validators.number() },
         firmwarePolicy: { value: "stable" },
+        showBetaFirmwareNotices: { value: false },
+        monitoringEnabled: { value: true },
+        pollIntervalSeconds: { value: 60, validate: RED.validators.number() },
+        offlineDetectionEnabled: { value: true },
+        offlineFailureThreshold: { value: 3, validate: RED.validators.number() },
+        recoveryMinOfflineMinutes: { value: 5, validate: RED.validators.number() },
+        notifyOffline: { value: true },
+        notifyRecovery: { value: true },
+        notifyFirmware: { value: true },
+        notifyTemperature: { value: true },
+        notifyReboot: { value: true },
+        deviceNote: { value: "" },
+        detailLevel: { value: "normal" },
+        deviceClassSettings: { value: "{}" },
+        deviceSettings: { value: "{}" },
         scheduledRebootEnabled: { value: false },
         scheduledRebootIntervalDays: { value: 7, validate: RED.validators.number() },
         scheduledRebootMode: { value: "maintenance-window" },
@@ -129,6 +462,10 @@
       label: function () { return this.name || text(this, "shelly-admin-config.label.default", {}, "Shelly administration"); },
       oneditprepare: function () {
         var node = this;
+        node._shellyClassSettings = parseMap(node.deviceClassSettings);
+        node._shellyDeviceSettings = parseMap(node.deviceSettings);
+        node._shellyRuntimeDevices = {};
+        node._shellyDeviceSettingsLoaded = false;
         applyNumericDefaults(node, false);
         var select = $("#node-config-input-contextStore");
         function updateScheduledRebootVisibility() {
@@ -186,15 +523,43 @@
           select.empty().append($("<option>").val(selectedValue).text(selectedValue || "default"));
           showWarning(text(node, "shelly-admin-config.storage.loadFailed", {}, "The available Node-RED Context stores could not be loaded. The runtime will verify the selection safely."));
         });
+        $(".shelly-config-tab-button").off("click.shellyAdmin").on("click.shellyAdmin", function () { activateConfigTab(node, $(this).attr("data-tab")); });
+        $("#node-config-device-sort").val(sortStorage("shelly-admin:sort:config-devices") || "name");
+        $("#node-config-device-settings-refresh").off("click.shellyAdmin").on("click.shellyAdmin", function () { loadDeviceSettings(node, true); });
+        $("#node-config-device-selector").off("change.shellyAdmin").on("change.shellyAdmin", function () { node._shellySelectedDeviceId = $(this).val(); renderDeviceEditor(node); });
+        $("#node-config-device-sort").off("change.shellyAdmin").on("change.shellyAdmin", function () { sortStorage("shelly-admin:sort:config-devices", $(this).val()); renderDeviceList(node, { devices: Object.keys(node._shellyRuntimeDevices || {}).map(function (id) { return node._shellyRuntimeDevices[id]; }) }); });
+        $("#node-config-device-class").off("change.shellyAdmin").on("change.shellyAdmin", function () {
+          var id = $("#node-config-device-selector").val(); if (!id) return;
+          node._shellyDeviceSettings[id] = node._shellyDeviceSettings[id] || { overrides: {} };
+          node._shellyDeviceSettings[id].deviceClass = $(this).val(); renderDeviceEditor(node); renderClassEditor(node);
+        });
+        $("#node-config-device-class-select").off("change.shellyAdmin").on("change.shellyAdmin", function () { renderClassEditor(node); });
+        renderClassEditor(node);
+        activateConfigTab(node, "general");
       },
       oneditsave: function () {
         applyNumericDefaults(this, true);
+        this.deviceClassSettings = JSON.stringify(this._shellyClassSettings || {});
+        this.deviceSettings = JSON.stringify(this._shellyDeviceSettings || {});
+        $("#node-config-input-deviceClassSettings").val(this.deviceClassSettings);
+        $("#node-config-input-deviceSettings").val(this.deviceSettings);
       }
     });
+    if (typeof window !== "undefined") window.shellyAdminConfigEditor = { deviceIdentity: deviceIdentity, sortDevices: sortDevices, sortStorage: sortStorage, filterDeviceTypes: filterDeviceTypes, loadTypeFilter: loadTypeFilter, saveTypeFilter: saveTypeFilter, renderDeviceDropdown: renderDeviceDropdown, renderTypeFilter: renderTypeFilter, renderClassMembers: renderClassMembers };
   }());
 </script>
 
 <script type="text/html" data-template-name="shelly-admin-config">
+  <style>
+    .shelly-config-tabs{display:flex;gap:6px;margin-bottom:12px;border-bottom:1px solid #ccc}.shelly-config-tab-button{border:0;background:transparent;padding:8px 12px}.shelly-config-tab-button.active{border-bottom:3px solid #4b8bcb;font-weight:600}.shelly-device-setting-row,.shelly-device-effective-row{display:grid;grid-template-columns:minmax(180px,1.5fr) auto auto minmax(120px,1fr);gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #eee}.shelly-device-effective-row{grid-template-columns:minmax(180px,1.5fr) minmax(120px,1fr) 90px}.shelly-device-setting-value{width:100%}.shelly-device-settings-scroll{max-height:340px;overflow-y:auto;overflow-x:hidden;border:1px solid #ddd;padding:6px;margin-bottom:12px}.shelly-device-effective-row em{color:#666}.shelly-device-runtime-fields{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,2fr);gap:5px 12px;border:1px solid #ddd;padding:8px;margin-bottom:12px}.shelly-device-runtime-fields dt{font-weight:600}.shelly-device-runtime-fields dd{margin:0}.shelly-device-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.shelly-sort-refresh{display:flex;gap:8px;align-items:center;margin-left:auto;white-space:nowrap}.shelly-device-toolbar .shelly-compact-select{width:auto;min-width:75px;max-width:110px}.shelly-device-dropdown,.shelly-type-filter{position:relative;min-width:0}.shelly-device-dropdown{margin-bottom:10px}.shelly-device-dropdown-trigger{width:100%;display:block;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shelly-device-dropdown-menu,.shelly-type-filter-menu{position:absolute;z-index:1001;top:100%;left:0;right:0;max-height:260px;overflow-y:auto;overflow-x:hidden;border:1px solid #bbb;background:var(--red-ui-secondary-background,#fff);box-shadow:0 4px 10px rgba(0,0,0,.18);padding:4px}.shelly-device-dropdown-option{display:block;width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shelly-device-dropdown-option:hover,.shelly-device-dropdown-option:focus,.shelly-device-dropdown-option.active{background:var(--red-ui-list-item-background-hover,#e8e8e8);outline:none}.shelly-device-part.fallback,#node-config-device-heading.fallback,.shelly-class-member strong.fallback{font-style:italic;color:#6b7280}.shelly-type-filter-trigger{white-space:nowrap}.shelly-type-filter-menu{right:0;left:auto;min-width:220px}.shelly-type-filter-actions{display:flex;gap:4px;padding:3px}.shelly-type-filter-option{display:flex;gap:7px;align-items:center;padding:5px;min-width:0}.shelly-type-filter-option span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shelly-type-filter-option input{width:auto;margin:0}.shelly-class-window-summary{font-weight:600;margin:7px 0}.shelly-class-member{display:flex;flex-direction:column;padding:5px 0;border-bottom:1px solid #eee;min-width:0}.shelly-class-member strong,.shelly-class-member span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .shelly-type-filter{flex:0 1 280px;width:280px;max-width:100%;min-width:0}.shelly-type-filter-trigger{width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis}.shelly-type-filter-menu{left:0;right:auto;width:100%;min-width:100%;max-width:100%;box-sizing:border-box}.shelly-type-filter-option{white-space:normal;box-sizing:border-box;align-items:flex-start}.shelly-type-filter-option span{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;min-width:0}
+  </style>
+  <div class="shelly-config-tabs" role="tablist">
+    <button type="button" class="red-ui-button shelly-config-tab-button active" data-tab="general" data-i18n="shelly-admin-config.tab.general"></button>
+    <button type="button" class="red-ui-button shelly-config-tab-button" data-tab="devices" data-i18n="shelly-admin-config.tab.deviceSettings"></button>
+  </div>
+  <div class="shelly-config-tab-panel" data-panel="general">
   <h3 data-i18n="shelly-admin-config.group.identity"></h3>
   <div class="form-row"><label for="node-config-input-name"><i class="fa fa-tag"></i> <span data-i18n="shelly-admin-config.label.name"></span></label><input type="text" id="node-config-input-name"></div>
   <div class="form-row"><label for="node-config-input-username"><i class="fa fa-user"></i> <span data-i18n="shelly-admin-config.label.username"></span></label><input type="text" id="node-config-input-username" placeholder="admin"></div>
@@ -206,7 +571,22 @@
   <div class="form-row"><label for="node-config-input-maxAddresses"><span data-i18n="shelly-admin-config.label.maxAddresses"></span></label><input type="number" id="node-config-input-maxAddresses" min="1"></div>
   <div class="form-row"><label for="node-config-input-timeoutMs"><span data-i18n="shelly-admin-config.label.timeoutMs"></span></label><input type="number" id="node-config-input-timeoutMs" min="250"></div>
   <div class="form-row"><label for="node-config-input-firmwareCheckTimeoutMs"><span data-i18n="shelly-admin-config.label.firmwareCheckTimeoutMs"></span></label><input type="number" id="node-config-input-firmwareCheckTimeoutMs" min="250" max="60000" step="250"></div>
-  <div class="form-row"><label for="node-config-input-firmwarePolicy"><span data-i18n="shelly-admin-config.label.firmwarePolicy"></span></label><select id="node-config-input-firmwarePolicy"><option value="stable" data-i18n="shelly-admin-config.option.stableOnly"></option><option value="allow-beta" data-i18n="shelly-admin-config.option.allowBeta"></option></select></div>
+  <div class="form-row"><label for="node-config-input-firmwarePolicy"><span data-i18n="shelly-admin-config.label.firmwarePolicy"></span></label><select id="node-config-input-firmwarePolicy"><option value="stable" data-i18n="shelly-admin-config.option.stableOnly"></option><option value="allow-beta" data-i18n="shelly-admin-config.option.allowBeta"></option><option value="disabled" data-i18n="shelly-admin-config.option.noAutomaticUpdates"></option></select></div>
+  <div class="form-row"><label for="node-config-input-showBetaFirmwareNotices"><span data-i18n="shelly-admin-config.label.showBetaFirmwareNotices"></span></label><input type="checkbox" id="node-config-input-showBetaFirmwareNotices" style="width:auto"></div>
+  <h3 data-i18n="shelly-admin-config.group.monitoring"></h3>
+  <div class="form-row"><label for="node-config-input-monitoringEnabled"><span data-i18n="shelly-admin-config.label.monitoringEnabled"></span></label><input type="checkbox" id="node-config-input-monitoringEnabled" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-pollIntervalSeconds"><span data-i18n="shelly-admin-config.label.pollIntervalSeconds"></span></label><input type="number" id="node-config-input-pollIntervalSeconds" min="10" max="86400"></div>
+  <div class="form-row"><label for="node-config-input-offlineDetectionEnabled"><span data-i18n="shelly-admin-config.label.offlineDetectionEnabled"></span></label><input type="checkbox" id="node-config-input-offlineDetectionEnabled" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-offlineFailureThreshold"><span data-i18n="shelly-admin-config.label.offlineFailureThreshold"></span></label><input type="number" id="node-config-input-offlineFailureThreshold" min="1" max="100"></div>
+  <div class="form-row"><label for="node-config-input-recoveryMinOfflineMinutes"><span data-i18n="shelly-admin-config.label.recoveryMinOfflineMinutes"></span></label><input type="number" id="node-config-input-recoveryMinOfflineMinutes" min="0" max="10080"></div>
+  <h3 data-i18n="shelly-admin-config.group.notifications"></h3>
+  <div class="form-row"><label for="node-config-input-notifyOffline"><span data-i18n="shelly-admin-config.label.notifyOffline"></span></label><input type="checkbox" id="node-config-input-notifyOffline" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-notifyRecovery"><span data-i18n="shelly-admin-config.label.notifyRecovery"></span></label><input type="checkbox" id="node-config-input-notifyRecovery" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-notifyFirmware"><span data-i18n="shelly-admin-config.label.notifyFirmware"></span></label><input type="checkbox" id="node-config-input-notifyFirmware" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-notifyTemperature"><span data-i18n="shelly-admin-config.label.notifyTemperature"></span></label><input type="checkbox" id="node-config-input-notifyTemperature" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-notifyReboot"><span data-i18n="shelly-admin-config.label.notifyReboot"></span></label><input type="checkbox" id="node-config-input-notifyReboot" style="width:auto"></div>
+  <div class="form-row"><label for="node-config-input-detailLevel"><span data-i18n="shelly-admin-config.label.detailLevel"></span></label><select id="node-config-input-detailLevel"><option value="normal">Normal</option><option value="verbose">Verbose</option></select></div>
+  <div class="form-row"><label for="node-config-input-deviceNote"><span data-i18n="shelly-admin-config.label.deviceNote"></span></label><input type="text" id="node-config-input-deviceNote"></div>
   <h3 data-i18n="shelly-admin-config.group.scheduledReboot"></h3>
   <div class="form-row"><label for="node-config-input-scheduledRebootEnabled"><span data-i18n="shelly-admin-config.label.scheduledRebootEnabled"></span></label><input type="checkbox" id="node-config-input-scheduledRebootEnabled" style="width:auto"></div>
   <div id="node-config-scheduled-reboot-options">
@@ -257,14 +637,41 @@
   <div class="form-row"><label for="node-config-input-temperatureCooldownMinutes"><span data-i18n="shelly-admin-config.label.temperatureCooldownMinutes"></span></label><input type="number" id="node-config-input-temperatureCooldownMinutes"></div>
   <div class="form-row"><label for="node-config-input-policies"><i class="fa fa-shield"></i> <span data-i18n="shelly-admin-config.label.policies"></span></label><textarea id="node-config-input-policies" rows="8" style="width:70%;font-family:monospace"></textarea></div>
   <div class="form-tips"><span data-i18n="shelly-admin-config.tip.policySafety"></span></div>
+  </div>
+  <div class="shelly-config-tab-panel" data-panel="devices" style="display:none">
+    <div class="form-tips" data-i18n="shelly-admin-config.deviceSettings.help"></div>
+    <h3 data-i18n="shelly-admin-config.deviceSettings.classDefaults"></h3>
+    <div class="form-row"><label for="node-config-device-class-select" data-i18n="shelly-admin-config.deviceSettings.class"></label><select id="node-config-device-class-select"><option value="standard" data-i18n="shelly-admin-config.deviceClass.standard"></option><option value="critical" data-i18n="shelly-admin-config.deviceClass.critical"></option><option value="test" data-i18n="shelly-admin-config.deviceClass.test"></option><option value="poor-connection" data-i18n="shelly-admin-config.deviceClass.poor-connection"></option></select></div>
+    <div id="node-config-device-class-fields" class="shelly-device-settings-scroll"></div>
+    <h3 data-i18n="shelly-admin-config.classWindow.membersHeading"></h3>
+    <div id="node-config-device-class-members" class="shelly-device-settings-scroll"></div>
+    <h3 data-i18n="shelly-admin-config.deviceSettings.deviceOverrides"></h3>
+    <div class="form-row shelly-device-toolbar"><div id="node-config-device-type-filter" class="shelly-type-filter"></div><div class="shelly-sort-refresh"><label for="node-config-device-sort"><span data-i18n="shelly-admin-config.deviceSettings.sortBy"></span></label><select id="node-config-device-sort" class="shelly-compact-select"><option value="type" data-i18n="shelly-admin-config.deviceSettings.sortType"></option><option value="name" data-i18n="shelly-admin-config.deviceSettings.sortName"></option><option value="ip" data-i18n="shelly-admin-config.deviceSettings.sortIp"></option></select><button type="button" id="node-config-device-settings-refresh" class="red-ui-button"><i class="fa fa-refresh"></i> <span data-i18n="shelly-admin-config.deviceSettings.refresh"></span></button></div></div>
+    <input type="hidden" id="node-config-device-selector">
+    <div id="node-config-device-dropdown" class="shelly-device-dropdown"></div>
+    <div id="node-config-device-settings-status" class="form-tips"></div>
+    <h3 id="node-config-device-heading"></h3>
+    <div class="form-row"><label for="node-config-device-class" data-i18n="shelly-admin-config.deviceSettings.class"></label><select id="node-config-device-class"><option value="standard" data-i18n="shelly-admin-config.deviceClass.standard"></option><option value="critical" data-i18n="shelly-admin-config.deviceClass.critical"></option><option value="test" data-i18n="shelly-admin-config.deviceClass.test"></option><option value="poor-connection" data-i18n="shelly-admin-config.deviceClass.poor-connection"></option></select></div>
+    <h3 data-i18n="shelly-admin-config.deviceRuntime.heading"></h3>
+    <div id="node-config-device-runtime"></div>
+    <div id="node-config-device-overrides" class="shelly-device-settings-scroll"></div>
+    <h3 data-i18n="shelly-admin-config.deviceSettings.effective"></h3>
+    <div id="node-config-device-effective" class="shelly-device-settings-scroll"></div>
+    <textarea id="node-config-input-deviceClassSettings" style="display:none"></textarea>
+    <textarea id="node-config-input-deviceSettings" style="display:none"></textarea>
+  </div>
 </script>
 
 <script type="text/html" data-help-name="shelly-admin-config">
   <p>Shared configuration and runtime for discovery, inventory, schema-2 persistence, bounded history, device baselines, peer comparison and guarded actions.</p>
-  <p><strong>⚠️ Use at your own risk – no warranty.</strong> This unofficial community project is not affiliated with Shelly or Allterco. It is provided “as is”. It is not a certified fire-protection system.</p>
+    <p><strong>Device dropdown and classes (0.5.1):</strong> Device Settings uses one accessible dropdown followed by details; no separate button list. The bold active sort key comes first (`Name · Type · IP`, `Type · Name · IP`, or `IP · Name · Type`) and sort/type filter persist. The width-bounded type popover wraps long choices inside the dialog. Class reboot enablement, interval, mode and time remain editable; the selected class shows assigned devices and each next planned reboot.</p>
+<p><strong>⚠️ Use at your own risk – no warranty.</strong> This unofficial community project is not affiliated with Shelly or Allterco. It is provided “as is”. It is not a certified fire-protection system.</p>
   <p>Targets accept CIDR networks, full or short IP ranges, individual addresses, and multiple comma/newline-separated entries. Automatic interface networks are limited by the configured minimum prefix and global address cap.</p>
   <p>The storage dropdown lists the Context stores currently exposed by Node-RED. Select a <code>localfilesystem</code> store (commonly named <code>file</code>) for durable state. If none is available, the editor and runtime warn clearly and the node uses the default store through the supported Context API. No private Node-RED files are accessed directly.</p>
   <p>The firmware policy defaults to <em>Stable only</em>; <em>Allow beta</em> is explicit. <em>Firmware Check Timeout (ms)</em> defaults to 2500 ms and is limited to 250–60000 ms. Missing or empty legacy numeric fields are visibly defaulted and saved as concrete numbers.</p>
+  <p><strong>Device Settings:</strong> settings resolve as device override, device class, then general configuration. All classes, including Standard, are editable. Reboot interval, immediate/maintenance-window mode and window time inherit independently; the runtime scheduler uses those effective values. The tab shows effective origins, current/pre-reboot uptime, reboot classification and the next planned reboot. Missing values are Not available, not zero.</p>
+  <p><strong>Beta notices:</strong> <em>Show beta firmware notices</em> is off by default. When enabled, one beta-only notice is opened per device and beta version. Availability remains machine-readable while notices are off; Stable update behavior is unchanged.</p>
+  <p>The inventory is loaded through a <code>shelly-admin.read</code>-protected, no-store Admin endpoint only when the Device Settings tab is opened or Refresh is clicked. Deploy the configuration node to persist class and override changes.</p>
   <p>History stores available raw values plus compact buckets with retention, count and byte limits. Conservative is the default anomaly profile; firmware/configuration changes start warm-up. Peer comparison requires at least three closely matching devices by default.</p>
   <p>State schema 2 migrates 0.1.x inventory, history, errors and analysis sections independently. A damaged optional section is isolated instead of discarding a valid inventory.</p>
   <p>Temperature defaults are 70 °C warning, 85 °C critical, 5 °C hysteresis, three consecutive observations and a 15-minute cooldown. These thresholds are separate from the device overtemperature flag.</p>
@@ -273,4 +680,5 @@
   {"match":{"id":"shellyplus1pm-aabbcc"},"policy":{"temperature":{"warningC":70,"criticalC":85,"autoShutdown":false,"outputs":[0]}}}
 ]</pre>
   <p>Automatic re-enabling is never performed. Device, firmware and API behavior can change. Test with dry-run, stage rollouts, supervise risky actions, and use professionally installed electrical equipment.</p>
+  <p>Inventory details distinguish persistent storage, latest direct reachability and the last scan status (found, not found, or not scanned).</p>
 </script>

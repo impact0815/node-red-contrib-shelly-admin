@@ -1,7 +1,7 @@
 {
   "name": "@impact0815/node-red-contrib-shelly-admin",
-  "version": "0.4.0",
-  "description": "Local Shelly Gen1-Gen4 discovery, durable history, device baselines, lifecycle observations, firmware policy, and safeguarded Node-RED maintenance.",
+  "version": "0.5.1",
+  "description": "Local Shelly Gen1-Gen4 discovery, three-level per-device policy resolution, durable history, lifecycle observations, firmware policy, and safeguarded Node-RED maintenance.",
   "keywords": [
     "node-red",
     "shelly",
@@ -47,7 +47,8 @@
     "docs/",
     "RELEASE-NOTES-0.3.0.md",
     "RELEASE-NOTES-0.4.0.md",
-    "RELEASE-NOTES-0.4.1.md"
+    "RELEASE-NOTES-0.5.0.md",
+    "RELEASE-NOTES-0.5.1.md"
   ],
   "scripts": {
     "test": "node --test test/*.test.js",

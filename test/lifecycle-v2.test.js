@@ -47,5 +47,5 @@ test("legacy active and resolved errors migrate without dropping inventory", () 
   assert.equal(inventory.get("a").lastError.status, "active");
   assert.equal(inventory.get("a").lastError.occurrenceCount, 1);
   assert.equal(inventory.get("b").lastResolvedError.status, "resolved");
-  assert.equal(inventory.export().schema, 2);
+  assert.equal(inventory.export().schema, 3);
 });

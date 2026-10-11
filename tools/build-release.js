@@ -50,6 +50,7 @@ function copyProject(source, destination, includeDist) {
       const first = relative.split(path.sep)[0];
       if ([".git", "node_modules", "coverage"].includes(first)) return false;
       if (!includeDist && first === "dist") return false;
+      if (/\.(?:tgz|zip)$/i.test(relative)) return false;
       return true;
     }
   });

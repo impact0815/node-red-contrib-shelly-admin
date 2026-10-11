@@ -16,7 +16,9 @@ module.exports = function registerShellyAdminMonitor(RED) {
     node.interval = null;
     node.initialTimer = null;
     node.periodicEnabled = config.periodic !== false && config.periodic !== "false";
-    const seconds = Math.max(10, Number(config.intervalSeconds) || 60);
+    const seconds = node.admin && node.admin.runtime && typeof node.admin.runtime.getMinimumPollIntervalSeconds === "function"
+      ? node.admin.runtime.getMinimumPollIntervalSeconds(Number(config.intervalSeconds) || 60)
+      : Math.max(10, Number(config.intervalSeconds) || 60);
 
     function clearSchedule() {
       if (node.interval) clearInterval(node.interval);
@@ -29,12 +31,12 @@ module.exports = function registerShellyAdminMonitor(RED) {
       clearSchedule();
       if (!node.periodicEnabled) return;
       node.interval = setInterval(
-        () => settleNodeCallback(node, () => execute({ action: "start", topic: "shelly-admin/periodic-monitor" })),
+        () => settleNodeCallback(node, () => execute({ action: "start", topic: "shelly-admin/periodic-monitor", scheduled: true })),
         seconds * 1000
       );
       if (includeInitial) {
         node.initialTimer = setTimeout(
-          () => settleNodeCallback(node, () => execute({ action: "start", topic: "shelly-admin/initial-monitor" })),
+          () => settleNodeCallback(node, () => execute({ action: "start", topic: "shelly-admin/initial-monitor", scheduled: true })),
           Math.min(5000, seconds * 1000)
         );
       }
@@ -53,6 +55,29 @@ module.exports = function registerShellyAdminMonitor(RED) {
         const serialized = publicError(error, { operation: "monitor" });
         sendError(node, msg, serialized, text);
         return { accepted: false, error: serialized };
+      }
+      if (["refresh-device", "wait-device", "remove-device"].includes(action)) {
+        try {
+          if (!msg.device) throw Object.assign(new Error("msg.device is required for this action."), { code: "ERR_DEVICE_REQUIRED" });
+          let result;
+          if (action === "remove-device") {
+            if (msg.confirm !== true) throw Object.assign(new Error("Removing an inventory device requires msg.confirm === true."), { code: "ERR_CONFIRMATION_REQUIRED" });
+            result = await node.admin.runtime.removeDevice(msg.device);
+          } else {
+            const snapshot = await node.admin.runtime.refreshDevice(msg.device, {
+              wait: action === "wait-device",
+              timeoutMs: msg.timeoutMs,
+              intervalMs: msg.intervalMs
+            });
+            result = { schema: "shelly-admin.device-refresh-result/1", timestamp: new Date().toISOString(), action, device: msg.device, snapshot };
+          }
+          safeNodeCall(node, "send", [output(msg, `shelly-admin/device/${action}`, result), null, null]);
+          return result;
+        } catch (error) {
+          const serialized = publicError(error, { operation: action, device: msg.device || null });
+          sendError(node, msg, serialized, text);
+          return { accepted: false, error: serialized };
+        }
       }
       if (action === "cancel") {
         const result = node.admin.runtime.cancel("monitor", msg.reason || "message-action");
@@ -98,6 +123,7 @@ module.exports = function registerShellyAdminMonitor(RED) {
         const result = await node.admin.runtime.monitor({
           automationMode: msg.automationMode || config.automationMode || "notify",
           firmwarePolicy: msg.firmwarePolicy || config.firmwarePolicy || undefined,
+          scheduled: msg.scheduled === true,
           onProgress(progress) {
             safeNodeCall(node, "status", {
               fill: progress.state === "cancel-requested" ? "yellow" : "blue",
@@ -163,6 +189,20 @@ module.exports = function registerShellyAdminMonitor(RED) {
 
     node.handleEditorAction = (request = {}) => {
       const action = normalizeAction("monitor", request.action, "start");
+      if (["refresh-device", "wait-device", "remove-device"].includes(action)) {
+        if (!node.admin || !node.admin.runtime) throw Object.assign(new Error(text("shelly-admin-monitor.error.noConfig")), { code: "ERR_CONFIG" });
+        const selector = request.device;
+        if (!selector) throw Object.assign(new Error("A device ID is required."), { code: "ERR_DEVICE_REQUIRED" });
+        if (action === "remove-device") {
+          if (request.confirm !== true) throw Object.assign(new Error("Removing an inventory device requires explicit confirmation."), { code: "ERR_CONFIRMATION_REQUIRED" });
+          return node.admin.runtime.removeDevice(selector).then((result) => ({ accepted: true, action, ...result }));
+        }
+        return node.admin.runtime.refreshDevice(selector, {
+          wait: action === "wait-device",
+          timeoutMs: request.timeoutMs,
+          intervalMs: request.intervalMs
+        }).then((snapshot) => ({ accepted: true, action, device: selector, snapshot }));
+      }
       if (!["cancel", "status", "enable", "disable"].includes(action)) {
         if (node.running) throw Object.assign(new Error(text("shelly-admin-monitor.error.busy")), { code: "ERR_BUSY" });
         setImmediate(() => settleNodeCallback(node, () => execute({ ...request, action, topic: "shelly-admin/editor-action" })));

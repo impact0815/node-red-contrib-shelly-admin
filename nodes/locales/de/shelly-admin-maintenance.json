@@ -21,7 +21,9 @@
       "firmwarePolicy": "Firmware-Richtlinie",
       "deviceTimeoutSeconds": "Update-/Neustart-Zeitlimit je Gerät (s)",
       "runTimeoutSeconds": "Laufzeitlimit (s)",
-      "manualControl": "Manuelle Bedienung"
+      "manualControl": "Manuelle Bedienung",
+      "deviceClass": "Geräteklassenauswahl",
+      "classActions": "Klassenaktionen"
     },
     "option": {
       "check": "Firmware prüfen",
@@ -35,7 +37,8 @@
       "notify": "Melden / nur prüfen",
       "auto": "Automatisches rollierendes Update",
       "stableOnly": "Nur Stable",
-      "allowBeta": "Beta erlauben"
+      "allowBeta": "Beta erlauben",
+      "noAutomaticUpdates": "Keine automatischen Updates"
     },
     "output": {
       "result": "Abschlussergebnis",
@@ -85,7 +88,10 @@
     "button": {
       "start": "Konfigurierte Aktion starten",
       "cancel": "Abbrechen",
-      "refresh": "Aktualisieren"
+      "refresh": "Aktualisieren",
+      "classCheck": "Klasse prüfen",
+      "classUpdate": "Klasse aktualisieren",
+      "classReboot": "Klasse neu starten"
     },
     "tabs": {
       "settings": "Einstellungen",
@@ -108,10 +114,12 @@
     "notify": {
       "noRun": "Kein aktiver Lauf",
       "sent": "Wartungsaktion angefordert",
-      "deploy": "Node vor der Editor-Bedienung deployen."
+      "deploy": "Node vor der Editor-Bedienung deployen.",
+      "selectClass": "Zuerst eine Geräteklasse auswählen."
     },
     "confirm": {
-      "destructive": "Ausgewählte Wartungsaktion auf der deployten Node ausführen? Dies kann Ausfälle verursachen."
+      "destructive": "Ausgewählte Wartungsaktion auf der deployten Node ausführen? Dies kann Ausfälle verursachen.",
+      "classDestructive": "Diese Wartungsaktion für alle Geräte der gewählten Klasse ausführen? Dies kann Ausfälle verursachen."
     },
     "statusView": {
       "active": "Wartungslauf aktiv",
@@ -135,7 +143,7 @@
       "noSelection": "Kein passendes Gerät ist ausgewählt.",
       "loading": "Geräteübersicht wird geladen…",
       "loadError": "Geräteübersicht konnte nicht geladen werden.",
-      "model": "Gerätename / Modell",
+      "model": "Modell",
       "id": "Geräte-ID",
       "ip": "IP-Adresse",
       "generation": "Generation",
@@ -153,7 +161,23 @@
       "lastFailed": "Letzter fehlgeschlagener Updateversuch",
       "error": "Fehler / Zeitüberschreitung",
       "recovery": "Recovery nach Update",
-      "maintenance": "Wartungslauf"
+      "maintenance": "Wartungslauf",
+      "deviceClass": "Geräteklasse",
+      "overrides": "Geräte-Overrides",
+      "inherited": "Keine (geerbt)",
+      "note": "Notiz / Bezeichnung",
+      "uptime": "Aktuelle Uptime",
+      "uptimeBeforeReboot": "Uptime vor dem letzten Neustart",
+      "lastReboot": "Letzter Neustart",
+      "rebootType": "Neustartklassifikation",
+      "rebootInterval": "Effektives Neustartintervall",
+      "rebootMode": "Effektiver Neustartmodus",
+      "rebootWindow": "Effektive Wartungsfenster-Uhrzeit",
+      "scheduledReboot": "Nächster geplanter Neustart",
+      "lastScheduledReboot": "Letzter geplanter Neustart",
+      "name": "Name",
+      "nameUnset": "Am Gerät ist kein Name gesetzt (oben wird der Ersatzname angezeigt).",
+      "lastScan": "Letzter Inventarscan"
     },
     "history": {
       "hint": "Die letzten 50 abgeschlossenen Wartungsläufe, neueste zuerst.",
@@ -162,6 +186,35 @@
       "loadError": "Wartungshistorie konnte nicht geladen werden.",
       "summary": "Angezeigt werden die letzten",
       "deviceResults": "Geräteergebnisse"
+    },
+    "origin": {
+      "global": "allgemein",
+      "class": "Klasse",
+      "device": "Gerät"
+    },
+    "rebootType": {
+      "planned": "Geplant",
+      "requested": "Angefordert",
+      "unexpected": "Unerwartet"
+    },
+    "sort": {
+      "label": "Sortieren nach",
+      "type": "Typ",
+      "name": "Name",
+      "ip": "IP"
+    },
+    "deviceClass": {
+      "none": "Kein Klassenfilter",
+      "standard": "Standard",
+      "critical": "Kritisch",
+      "test": "Testgerät",
+      "poorConnection": "Schlechte Verbindung"
+    },
+    "types": {
+      "allAction": "Alle",
+      "noneAction": "Keine",
+      "all": "Typen: alle",
+      "count": "Typen: {selected} von {total}"
     }
   }
 }

@@ -71,8 +71,9 @@ test("all Node-RED node modules register their expected types and the Context-st
     "shelly-admin-maintenance"
   ]);
   assert.equal(typeof registered[0].options.credentials.password, "object");
-  assert.equal(routes.length, 1);
+  assert.equal(routes.length, 2);
   assert.equal(routes[0][0], "/shelly-admin/context-stores");
+  assert.equal(routes[1][0], "/shelly-admin/config/:id/device-settings");
 });
 
 test("configuration editor exposes the documented firmware timeout default and bounds", () => {
@@ -121,11 +122,11 @@ test("configuration node preserves a 5000 ms firmware timeout in the runtime", a
 test("release version is consistent across package metadata and release notes", () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
   const packageLock = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package-lock.json"), "utf8"));
-  assert.equal(packageJson.version, "0.4.0");
-  assert.equal(packageLock.version, "0.4.0");
-  assert.equal(packageLock.packages[""].version, "0.4.0");
-  assert.ok(packageJson.files.includes("RELEASE-NOTES-0.4.0.md"));
-  assert.match(fs.readFileSync(path.join(__dirname, "..", "RELEASE-NOTES-0.4.0.md"), "utf8"), /^# @impact0815\/node-red-contrib-shelly-admin 0\.4\.0/m);
+  assert.equal(packageJson.version, "0.5.1");
+  assert.equal(packageLock.version, "0.5.1");
+  assert.equal(packageLock.packages[""].version, "0.5.1");
+  assert.ok(packageJson.files.includes("RELEASE-NOTES-0.5.1.md"));
+  assert.match(fs.readFileSync(path.join(__dirname, "..", "RELEASE-NOTES-0.5.1.md"), "utf8"), /^# @impact0815\/node-red-contrib-shelly-admin 0\.5\.1/m);
 });
 
 test("a throwing ready listener cannot reject initialization or escape as an uncaught exception", async () => {

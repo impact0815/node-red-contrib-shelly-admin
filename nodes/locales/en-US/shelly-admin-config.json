@@ -51,7 +51,20 @@
       "scheduledRebootEnabled": "Enable scheduled reboots",
       "scheduledRebootIntervalDays": "Time between reboots (days)",
       "scheduledRebootMode": "Reboot timing",
-      "scheduledRebootTime": "Maintenance-window time"
+      "scheduledRebootTime": "Maintenance-window time",
+      "monitoringEnabled": "Enable monitoring",
+      "pollIntervalSeconds": "Polling interval (s)",
+      "offlineDetectionEnabled": "Enable offline detection",
+      "offlineFailureThreshold": "Offline after consecutive failures",
+      "recoveryMinOfflineMinutes": "Recovery after offline duration (min)",
+      "notifyOffline": "Notify: offline",
+      "notifyRecovery": "Notify: recovery",
+      "notifyFirmware": "Notify: firmware",
+      "notifyTemperature": "Notify: temperature",
+      "notifyReboot": "Notify: reboot",
+      "deviceNote": "Default device note / label",
+      "detailLevel": "Detail level",
+      "showBetaFirmwareNotices": "Show beta firmware notices"
     },
     "placeholder": {
       "targets": "192.168.1.0/24\n192.168.10.20-40\n10.0.0.8"
@@ -83,7 +96,8 @@
       "stableOnly": "Stable only",
       "allowBeta": "Allow beta",
       "rebootImmediate": "Immediately after the interval",
-      "rebootMaintenanceWindow": "At the next maintenance window"
+      "rebootMaintenanceWindow": "At the next maintenance window",
+      "noAutomaticUpdates": "No automatic updates"
     },
     "group": {
       "identity": "Identity and credentials",
@@ -92,10 +106,100 @@
       "baseline": "Device baseline and peer analysis",
       "categories": "Observation categories",
       "temperatureSafety": "Static temperature safety and policies",
-      "scheduledReboot": "Scheduled reboots"
+      "scheduledReboot": "Scheduled reboots",
+      "monitoring": "Monitoring and offline detection",
+      "notifications": "Notifications"
     },
     "help": {
-      "scheduledReboot": "Disabled by default. Choose immediate execution or the next local maintenance window. Default: every 7 days at 03:00. Results and recovery are recorded in maintenance history."
+      "scheduledReboot": "Disabled by default. Choose immediate execution or the next local maintenance window. Default: every 7 days at 03:00. Results and recovery are recorded in maintenance history.",
+      "betaFirmwareNotices": "Off by default. When enabled, a beta-only firmware notice is emitted once per device and beta version; machine-readable beta availability remains visible when disabled."
+    },
+    "tab": {
+      "general": "General settings",
+      "deviceSettings": "Device Settings"
+    },
+    "deviceSettings": {
+      "help": "Class settings inherit from General. Device overrides inherit from their selected class. Clear each override by selecting Inherit. Devices load only when this tab is opened or Refresh is clicked. Deploy to persist changes.",
+      "classDefaults": "Device class presets",
+      "deviceOverrides": "Device overrides",
+      "device": "Inventory device",
+      "class": "Device class",
+      "refresh": "Refresh",
+      "effective": "Effective values and origin",
+      "inherit": "Inherit",
+      "loading": "Loading inventoried devices…",
+      "loadError": "Deploy this configuration node before loading its inventory.",
+      "sortBy": "Sort by",
+      "sortType": "Type",
+      "sortName": "Name",
+      "sortIp": "IP",
+      "typesAllAction": "All",
+      "typesNoneAction": "None",
+      "typesAll": "Types: all",
+      "typesCount": "Types: {selected} of {total}",
+      "noTypeMatch": "No devices match the type filter."
+    },
+    "deviceClass": {
+      "standard": "Standard",
+      "critical": "Critical",
+      "test": "Test device",
+      "poor-connection": "Poor connection"
+    },
+    "origin": {
+      "global": "general",
+      "class": "class",
+      "device": "device"
+    },
+    "deviceField": {
+      "monitoringEnabled": "Monitoring",
+      "pollIntervalSeconds": "Polling interval (s)",
+      "offlineDetectionEnabled": "Offline detection",
+      "offlineFailureThreshold": "Consecutive failures",
+      "recoveryMinOfflineMinutes": "Recovery minimum offline (min)",
+      "notifyOffline": "Notify offline",
+      "notifyRecovery": "Notify recovery",
+      "notifyFirmware": "Notify firmware",
+      "notifyTemperature": "Notify temperature",
+      "notifyReboot": "Notify reboot",
+      "firmwarePolicy": "Firmware policy",
+      "autoRebootEnabled": "Automatic reboot",
+      "autoRebootIntervalDays": "Reboot interval (days)",
+      "autoRebootMode": "Reboot mode",
+      "autoRebootTime": "Maintenance-window time",
+      "temperatureWarningC": "Temperature warning (°C)",
+      "temperatureCriticalC": "Temperature critical (°C)",
+      "rawRetentionHours": "Raw history (h)",
+      "aggregateRetentionDays": "Aggregate history (days)",
+      "deviceNote": "Device note / label",
+      "detailLevel": "Detail level"
+    },
+    "common": {
+      "unavailable": "Not available"
+    },
+    "deviceRuntime": {
+      "heading": "Current uptime and reboot status",
+      "currentUptime": "Current uptime",
+      "uptimeBeforeReboot": "Uptime before last reboot",
+      "lastReboot": "Last reboot",
+      "rebootType": "Reboot classification",
+      "nextReboot": "Next planned reboot",
+      "name": "Name",
+      "nameUnset": "No name is set on the device (fallback shown above).",
+      "model": "Model",
+      "ip": "IP address",
+      "lastScan": "Last inventory scan"
+    },
+    "rebootType": {
+      "planned": "Planned",
+      "requested": "Requested",
+      "unexpected": "Unexpected"
+    },
+    "classWindow": {
+      "membersHeading": "Class maintenance window and devices",
+      "enabled": "Reboot enabled",
+      "disabled": "Reboot disabled",
+      "noDevices": "No inventoried devices belong to this class.",
+      "nextReboot": "Next reboot"
     }
   }
 }

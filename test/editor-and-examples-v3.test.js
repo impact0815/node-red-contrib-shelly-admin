@@ -103,6 +103,30 @@ test("message actions provide status, monitor schedule control and maintenance c
   }
 });
 
+test("maintenance forwards msg.deviceClass to the guarded runtime path", async () => {
+  let captured;
+  const runtime = {
+    config: { firmwareCheckTimeoutMs: 2500 },
+    maintain: async (options) => {
+      captured = options;
+      return {
+        schema: "shelly-admin.maintenance-result/1", timestamp: new Date().toISOString(), runId: "class-1", state: "completed", action: options.action,
+        configuredTimeouts: { firmwareCheckMs: 2500 }, summary: { selected: 1, processed: 1, checked: 1, eligible: 0, skipped: 0, updated: 0, failed: 0, errors: 0, timeouts: 0 },
+        lifecycle: { state: "completed" }, observations: [], safetyEvents: [], actions: [], results: [], errors: []
+      };
+    },
+    cancel: () => ({ accepted: false }),
+    operationStatus: () => ({ active: false })
+  };
+  const { RED, registered } = redHarness(runtime);
+  require("../nodes/shelly-admin-maintenance")(RED);
+  const node = new registered[0].constructor({ id: "maint-class", admin: "admin", action: "check", scheduleHours: 0, dryRun: true });
+  await trigger(node, { action: "check", deviceClass: "poor-connection" });
+  assert.equal(captured.deviceClass, "poor-connection");
+  assert.equal(captured.allowAll, false);
+  assert.equal(captured.dryRun, true);
+});
+
 test("complete English and German examples are importable, fully wired and cover required operations", () => {
   for (const file of ["03-complete-operations-en.json", "04-kompletter-betrieb-de.json"]) {
     const flow = JSON.parse(fs.readFileSync(path.join(root, "examples", file), "utf8"));
@@ -127,4 +151,43 @@ test("complete English and German examples are importable, fully wired and cover
     assert.match(text, /no periodic editor refresh|kein periodisches Editor-Refresh/, `${file}: missing manual-refresh guidance`);
     assert.match(text, /plannedUpdates/, `${file}: missing policy-eligible firmware plan output`);
   }
+});
+
+
+test("monitor editor device actions reload, wait and require confirmation for remove", async () => {
+  const calls = [];
+  const runtime = {
+    refreshDevice: async (device, options) => { calls.push({ action: options.wait ? "wait" : "refresh", device, options }); return { schema: "shelly-admin.device-details/1", selectedDeviceId: device, devices: [], details: null }; },
+    removeDevice: async (device) => { calls.push({ action: "remove", device }); return { removed: { id: device }, snapshot: { schema: "shelly-admin.device-details/1", devices: [], details: null } }; },
+    operationStatus: () => ({ active: false })
+  };
+  const { RED, registered } = redHarness(runtime);
+  require("../nodes/shelly-admin-monitor")(RED);
+  const node = new registered[0].constructor({ id: "monitor-actions", admin: "admin", periodic: false });
+  const refreshed = await node.handleEditorAction({ action: "refresh-device", device: "dev-1" });
+  const waited = await node.handleEditorAction({ action: "wait-device", device: "dev-1", timeoutMs: 1000 });
+  assert.equal(refreshed.accepted, true);
+  assert.equal(waited.accepted, true);
+  await assert.rejects(Promise.resolve().then(() => node.handleEditorAction({ action: "remove-device", device: "dev-1" })), (error) => error.code === "ERR_CONFIRMATION_REQUIRED");
+  const removed = await node.handleEditorAction({ action: "remove-device", device: "dev-1", confirm: true });
+  assert.equal(removed.accepted, true);
+  assert.deepEqual(calls.map((item) => item.action), ["refresh", "wait", "remove"]);
+});
+
+
+test("monitor message actions reload and confirmed remove a selected device", async () => {
+  const calls = [];
+  const runtime = {
+    refreshDevice: async (device, options) => { calls.push({ action: options.wait ? "wait" : "refresh", device }); return { schema: "shelly-admin.device-details/1", timestamp: new Date().toISOString(), devices: [] }; },
+    removeDevice: async (device) => { calls.push({ action: "remove", device }); return { schema: "shelly-admin.device-remove-result/1", timestamp: new Date().toISOString(), removed: { id: device }, snapshot: { devices: [] } }; },
+    operationStatus: () => ({ active: false })
+  };
+  const { RED, registered } = redHarness(runtime);
+  require("../nodes/shelly-admin-monitor")(RED);
+  const node = new registered[0].constructor({ id: "monitor-message-actions", admin: "admin", periodic: false });
+  await trigger(node, { action: "refresh-device", device: "dev-1" });
+  await trigger(node, { action: "wait-device", device: "dev-1" });
+  await trigger(node, { action: "remove-device", device: "dev-1", confirm: true });
+  assert.deepEqual(calls.map((item) => item.action), ["refresh", "wait", "remove"]);
+  assert.ok(node.sent.every((batch) => batch[0] && /^shelly-admin\/device\//.test(batch[0].topic)));
 });

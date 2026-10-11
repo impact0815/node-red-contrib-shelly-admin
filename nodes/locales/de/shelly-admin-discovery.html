@@ -6,4 +6,6 @@
   <ol><li>Inventarergebnis mit Geräten, Zusammenfassung, <code>runId</code>, Zustand und Lifecycle.</li><li>Fortschritt/Lifecycle sowie Discovery-, Änderungs-, Offline- und Recovery-Events.</li><li>Strukturierte Fehler.</li></ol>
   <p>Lifecycle-Zustände: started, running, cancel-requested, cancelled, completed, completed-with-issues, failed. Abbruch beendet aktive Requests, erhält abgeschlossene Probes, wertet nicht gestartete Ziele nicht als offline, persistiert konsistent und schließt einen abgebrochenen Vollscan nicht als vollständig ab.</p>
   <p><strong>⚠️ Nutzung auf eigene Gefahr – keine Gewährleistung.</strong> Nur autorisierte Netze scannen. Inoffizielles Community-Projekt ohne Verbindung zu Shelly/Allterco.</p>
+  <p>Jeder erfolgreiche Abruf aktualisiert den konfigurierten Gerätenamen (`Shelly.GetDeviceInfo`/`Sys.GetConfig` bei Gen2+, `/settings` bei Gen1), sodass das Inventar Umbenennungen übernimmt. Ältere Inventare erhalten den Namen beim nächsten erfolgreichen Abruf.</p>
+  <p><strong>Persistentes Inventar:</strong> Ein Full-Scan löscht stromlose/entfernte Geräte nicht automatisch. Jetzt gefunden, bekannt aber nicht gefunden und außerhalb des Scanbereichs werden getrennt ausgewiesen.</p>
 </script>

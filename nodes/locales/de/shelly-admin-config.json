@@ -51,7 +51,20 @@
       "scheduledRebootEnabled": "Regelmäßige Neustarts aktivieren",
       "scheduledRebootIntervalDays": "Zeit zwischen Neustarts (Tage)",
       "scheduledRebootMode": "Zeitpunkt des Neustarts",
-      "scheduledRebootTime": "Uhrzeit des Wartungsfensters"
+      "scheduledRebootTime": "Uhrzeit des Wartungsfensters",
+      "monitoringEnabled": "Überwachung aktivieren",
+      "pollIntervalSeconds": "Polling-Intervall (s)",
+      "offlineDetectionEnabled": "Offline-Erkennung aktivieren",
+      "offlineFailureThreshold": "Offline nach aufeinanderfolgenden Fehlern",
+      "recoveryMinOfflineMinutes": "Recovery nach Offline-Dauer (min)",
+      "notifyOffline": "Melden: Offline",
+      "notifyRecovery": "Melden: Recovery",
+      "notifyFirmware": "Melden: Firmware",
+      "notifyTemperature": "Melden: Temperatur",
+      "notifyReboot": "Melden: Neustart",
+      "deviceNote": "Standard-Gerätenotiz / Bezeichnung",
+      "detailLevel": "Detailgrad",
+      "showBetaFirmwareNotices": "Hinweise zu Beta-Firmware anzeigen"
     },
     "placeholder": {
       "targets": "192.168.1.0/24\n192.168.10.20-40\n10.0.0.8"
@@ -83,7 +96,8 @@
       "stableOnly": "Nur Stable",
       "allowBeta": "Beta erlauben",
       "rebootImmediate": "Sofort nach der eingestellten Zeit",
-      "rebootMaintenanceWindow": "Im nächsten Wartungsfenster"
+      "rebootMaintenanceWindow": "Im nächsten Wartungsfenster",
+      "noAutomaticUpdates": "Keine automatischen Updates"
     },
     "group": {
       "identity": "Identität und Zugangsdaten",
@@ -92,10 +106,100 @@
       "baseline": "Gerätebaseline und Peer-Analyse",
       "categories": "Beobachtungskategorien",
       "temperatureSafety": "Statische Temperatursicherheit und Richtlinien",
-      "scheduledReboot": "Regelmäßige Neustarts"
+      "scheduledReboot": "Regelmäßige Neustarts",
+      "monitoring": "Überwachung und Offline-Erkennung",
+      "notifications": "Benachrichtigungen"
     },
     "help": {
-      "scheduledReboot": "Standardmäßig deaktiviert. Wähle den sofortigen Neustart oder das nächste lokale Wartungsfenster. Standard: alle 7 Tage um 03:00 Uhr. Ergebnisse und Recovery werden in der Wartungshistorie gespeichert."
+      "scheduledReboot": "Standardmäßig deaktiviert. Wähle den sofortigen Neustart oder das nächste lokale Wartungsfenster. Standard: alle 7 Tage um 03:00 Uhr. Ergebnisse und Recovery werden in der Wartungshistorie gespeichert.",
+      "betaFirmwareNotices": "Standardmäßig aus. Wenn aktiviert, wird ein reiner Beta-Firmware-Hinweis je Gerät und Beta-Version nur einmal ausgegeben; maschinenlesbare Beta-Verfügbarkeit bleibt bei deaktivierter Option sichtbar."
+    },
+    "tab": {
+      "general": "Allgemeine Einstellungen",
+      "deviceSettings": "Geräte-Einstellungen"
+    },
+    "deviceSettings": {
+      "help": "Klasseneinstellungen erben von Allgemein. Geräte-Overrides erben von der gewählten Klasse. Jeder Override kann mit Erben zurückgesetzt werden. Geräte werden nur beim Öffnen dieses Reiters oder über Aktualisieren geladen. Zum Speichern deployen.",
+      "classDefaults": "Voreinstellungen der Geräteklassen",
+      "deviceOverrides": "Geräte-Overrides",
+      "device": "Inventargerät",
+      "class": "Geräteklasse",
+      "refresh": "Aktualisieren",
+      "effective": "Effektive Werte und Herkunft",
+      "inherit": "Erben",
+      "loading": "Inventargeräte werden geladen…",
+      "loadError": "Diese Config-Node deployen, bevor das Inventar geladen wird.",
+      "sortBy": "Sortieren nach",
+      "sortType": "Typ",
+      "sortName": "Name",
+      "sortIp": "IP",
+      "typesAllAction": "Alle",
+      "typesNoneAction": "Keine",
+      "typesAll": "Typen: alle",
+      "typesCount": "Typen: {selected} von {total}",
+      "noTypeMatch": "Keine Geräte entsprechen dem Typfilter."
+    },
+    "deviceClass": {
+      "standard": "Standard",
+      "critical": "Kritisch",
+      "test": "Testgerät",
+      "poor-connection": "Schlechte Verbindung"
+    },
+    "origin": {
+      "global": "allgemein",
+      "class": "Klasse",
+      "device": "Gerät"
+    },
+    "deviceField": {
+      "monitoringEnabled": "Überwachung",
+      "pollIntervalSeconds": "Polling-Intervall (s)",
+      "offlineDetectionEnabled": "Offline-Erkennung",
+      "offlineFailureThreshold": "Aufeinanderfolgende Fehler",
+      "recoveryMinOfflineMinutes": "Mindest-Offline-Dauer für Recovery (min)",
+      "notifyOffline": "Offline melden",
+      "notifyRecovery": "Recovery melden",
+      "notifyFirmware": "Firmware melden",
+      "notifyTemperature": "Temperatur melden",
+      "notifyReboot": "Neustart melden",
+      "firmwarePolicy": "Firmware-Policy",
+      "autoRebootEnabled": "Automatischer Neustart",
+      "autoRebootIntervalDays": "Neustartintervall (Tage)",
+      "autoRebootMode": "Neustartmodus",
+      "autoRebootTime": "Uhrzeit des Wartungsfensters",
+      "temperatureWarningC": "Temperaturwarnung (°C)",
+      "temperatureCriticalC": "Temperatur kritisch (°C)",
+      "rawRetentionHours": "Rohhistorie (h)",
+      "aggregateRetentionDays": "Aggregathistorie (Tage)",
+      "deviceNote": "Gerätenotiz / Bezeichnung",
+      "detailLevel": "Detailgrad"
+    },
+    "common": {
+      "unavailable": "Nicht verfügbar"
+    },
+    "deviceRuntime": {
+      "heading": "Aktuelle Uptime und Neustartstatus",
+      "currentUptime": "Aktuelle Uptime",
+      "uptimeBeforeReboot": "Uptime vor dem letzten Neustart",
+      "lastReboot": "Letzter Neustart",
+      "rebootType": "Neustartklassifikation",
+      "nextReboot": "Nächster geplanter Neustart",
+      "name": "Name",
+      "nameUnset": "Am Gerät ist kein Name gesetzt (oben wird der Ersatzname angezeigt).",
+      "model": "Modell",
+      "ip": "IP-Adresse",
+      "lastScan": "Letzter Inventarscan"
+    },
+    "rebootType": {
+      "planned": "Geplant",
+      "requested": "Angefordert",
+      "unexpected": "Unerwartet"
+    },
+    "classWindow": {
+      "membersHeading": "Klassen-Wartungsfenster und Geräte",
+      "enabled": "Neustart aktiviert",
+      "disabled": "Neustart deaktiviert",
+      "noDevices": "Keine inventarisierten Geräte gehören zu dieser Klasse.",
+      "nextReboot": "Nächster Neustart"
     }
   }
 }

@@ -98,6 +98,7 @@ module.exports = function registerShellyAdminMaintenance(RED) {
         const result = await node.admin.runtime.maintain({
           action,
           selectors: msg.devices || config.deviceSelectors,
+          deviceClass: msg.deviceClass || config.deviceClass || undefined,
           allowAll: msg.allowAll === true || config.allowAll === true,
           dryRun: msg.dryRun !== undefined ? msg.dryRun : config.dryRun !== false,
           confirmed: scheduledAuto ? true : msg.confirm === true,

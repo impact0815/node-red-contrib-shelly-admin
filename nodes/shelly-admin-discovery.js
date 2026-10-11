@@ -87,9 +87,9 @@ module.exports = function registerShellyAdminDiscovery(RED) {
           shape: "ring",
           text: text("shelly-admin-discovery.status.cancelled", { processed: result.summary.processed, total: result.summary.total })
         } : {
-          fill: "green",
+          fill: result.summary.notFoundThisScan ? "yellow" : "green",
           shape: "dot",
-          text: text("shelly-admin-discovery.status.ready", { count: result.summary.inventoryCount, online: result.summary.reachable })
+          text: text("shelly-admin-discovery.status.readyScan", { found: result.summary.foundThisScan ?? result.summary.reachable ?? 0, stored: result.summary.inventoryCount, notFound: result.summary.notFoundThisScan ?? 0 })
         });
         safeNodeCall(node, "send", [
           output(msg, "shelly-admin/inventory", result),

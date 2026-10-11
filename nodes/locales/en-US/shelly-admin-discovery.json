@@ -27,7 +27,8 @@
       "progress": "{{processed}}/{{total}} · {{phase}}",
       "cancelling": "cancelling scan",
       "cancelled": "scan cancelled · {{processed}}/{{total}}",
-      "idle": "idle"
+      "idle": "idle",
+      "readyScan": "{{found}} found now · {{stored}} stored · {{notFound}} known not found"
     },
     "error": {
       "noConfig": "A valid Shelly administration configuration is required.",

@@ -27,7 +27,8 @@
       "progress": "{{processed}}/{{total}} · {{phase}}",
       "cancelling": "Scan wird abgebrochen",
       "cancelled": "Scan abgebrochen · {{processed}}/{{total}}",
-      "idle": "inaktiv"
+      "idle": "inaktiv",
+      "readyScan": "{{found}} jetzt gefunden · {{stored}} gespeichert · {{notFound}} bekannte nicht gefunden"
     },
     "error": {
       "noConfig": "Eine gültige Shelly-Verwaltungskonfiguration ist erforderlich.",

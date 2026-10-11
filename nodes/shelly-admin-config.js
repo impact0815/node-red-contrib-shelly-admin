@@ -9,6 +9,21 @@ const registeredHttpAdmins = new WeakSet();
 
 const CONFIG_DEFAULTS = Object.freeze({
   firmwareCheckTimeoutMs: 2500,
+  showBetaFirmwareNotices: false,
+  monitoringEnabled: true,
+  pollIntervalSeconds: 60,
+  offlineDetectionEnabled: true,
+  offlineFailureThreshold: 3,
+  recoveryMinOfflineMinutes: 5,
+  notifyOffline: true,
+  notifyRecovery: true,
+  notifyFirmware: true,
+  notifyTemperature: true,
+  notifyReboot: true,
+  deviceNote: "",
+  detailLevel: "normal",
+  deviceClassSettings: "{}",
+  deviceSettings: "{}",
   scheduledRebootEnabled: false,
   scheduledRebootIntervalDays: 7,
   scheduledRebootMode: "maintenance-window",
@@ -66,7 +81,7 @@ module.exports = function registerShellyAdminConfig(RED) {
           text: text(`shelly-admin-config.${persistenceKey}`, { count: state.inventoryCount })
         });
         warnAboutPersistence(RED, node, state.persistence);
-        if (migratedConfig.scheduledRebootEnabled === true && !node.scheduledRebootTimer) {
+        if (!node.scheduledRebootTimer) {
           const run = () => settleNodeCallback(node, async () => {
             if (!node.runtime || node.runtime.closed) return;
             const result = await node.runtime.runScheduledReboots();
@@ -74,6 +89,8 @@ module.exports = function registerShellyAdminConfig(RED) {
           });
           node.scheduledRebootStartTimer = setTimeout(run, 60000);
           node.scheduledRebootTimer = setInterval(run, 15 * 60 * 1000);
+          if (typeof node.scheduledRebootStartTimer.unref === "function") node.scheduledRebootStartTimer.unref();
+          if (typeof node.scheduledRebootTimer.unref === "function") node.scheduledRebootTimer.unref();
         }
       });
       node.runtime.on("runtime-error", (error) => safeNodeCall(node, "error", error && error.message ? error.message : error));
@@ -82,6 +99,12 @@ module.exports = function registerShellyAdminConfig(RED) {
     } catch (error) {
       initializationFailed(error);
     }
+
+    node.handleEditorDeviceSettings = async () => {
+      if (!node.runtime) return { schema: "shelly-admin.device-settings/1", global: {}, classes: {}, devices: [] };
+      if (node.runtime.ready) await node.runtime.ready;
+      return node.runtime.getDeviceSettingsSnapshot();
+    };
 
     node.on("close", (_removed, done) => settleNodeCallback(node, async () => {
       if (node.scheduledRebootStartTimer) clearTimeout(node.scheduledRebootStartTimer);
@@ -141,6 +164,19 @@ function registerContextStoreRoute(RED) {
       });
     } catch (error) {
       response.status(500).json({ error: publicError(error, { operation: "list-context-stores" }) });
+    }
+  });
+  RED.httpAdmin.get("/shelly-admin/config/:id/device-settings", permission, async (request, response) => {
+    try {
+      const node = RED.nodes.getNode(request.params.id);
+      if (!node || typeof node.handleEditorDeviceSettings !== "function") {
+        response.status(404).json({ error: { code: "ERR_NODE_NOT_DEPLOYED", message: "Deploy the configuration node before loading device settings." } });
+        return;
+      }
+      if (typeof response.set === "function") response.set("Cache-Control", "no-store");
+      response.status(200).json(await node.handleEditorDeviceSettings());
+    } catch (error) {
+      response.status(400).json({ error: publicError(error, { operation: "editor-device-settings" }) });
     }
   });
 }
