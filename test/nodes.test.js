@@ -120,13 +120,21 @@ test("configuration node preserves a 5000 ms firmware timeout in the runtime", a
 });
 
 test("release version is consistent across package metadata and release notes", () => {
-  const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
-  const packageLock = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package-lock.json"), "utf8"));
-  assert.equal(packageJson.version, "0.5.1");
-  assert.equal(packageLock.version, "0.5.1");
-  assert.equal(packageLock.packages[""].version, "0.5.1");
-  assert.ok(packageJson.files.includes("RELEASE-NOTES-0.5.1.md"));
-  assert.match(fs.readFileSync(path.join(__dirname, "..", "RELEASE-NOTES-0.5.1.md"), "utf8"), /^# @impact0815\/node-red-contrib-shelly-admin 0\.5\.1/m);
+  const root = path.join(__dirname, "..");
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+  const packageLock = JSON.parse(fs.readFileSync(path.join(root, "package-lock.json"), "utf8"));
+  const version = packageJson.version;
+  const notes = `RELEASE-NOTES-${version}.md`;
+  const escaped = version.replace(/\./g, "\\.");
+
+  assert.equal(packageLock.version, version);
+  assert.equal(packageLock.packages[""].version, version);
+  assert.ok(packageJson.files.includes(notes));
+  assert.match(
+    fs.readFileSync(path.join(root, notes), "utf8"),
+    new RegExp(`^# @impact0815\\/node-red-contrib-shelly-admin ${escaped}`, "m")
+  );
+  assert.match(fs.readFileSync(path.join(root, "CHANGELOG.md"), "utf8"), new RegExp(`^## ${escaped}`, "m"));
 });
 
 test("a throwing ready listener cannot reject initialization or escape as an uncaught exception", async () => {

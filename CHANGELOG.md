@@ -1,12 +1,20 @@
+## 0.5.2
+
+- Documentation and examples only. No runtime code changes compared to 0.5.1.
+- Added the FlowFuse Dashboard 2.0 fleet dashboard example.
+- Added relay and plug switching with support for up to 4 channels.
+- Added per-channel power and state display.
+- Added the anonymized fleet dashboard screenshot.
+- Updated English and German dashboard documentation.
 # Changelog
 
 ## 0.5.1
 
 - Added configured Shelly names to inventory: Gen2+ uses `Shelly.GetDeviceInfo.name` or `Sys.GetConfig.device.name`; Gen1 uses `/settings.name`.
 - Discovery and Monitor refresh names after every successful probe, including device-side renames and cleared names; inventory schema 3 migrates older entries with `name: null`.
-- Added visible fallback order name → hostname/device ID → IP, with italic/muted fallback labels.
+- Added visible fallback order name â†’ hostname/device ID â†’ IP, with italic/muted fallback labels.
 - Removed the separate all-device button list from Monitor Device Details, Maintenance Device Overview and Config Device Settings; each view now has one slim, dependency-free custom dropdown followed directly by details.
-- Device dropdowns put the bold active sort key first in both selected and opened rows: `Name · Type · IP`, `Type · Name · IP`, or `IP · Name · Type`, while retaining fallback styling, ellipsis/tooltips, bounded scrolling, keyboard operation and outside-click closing.
+- Device dropdowns put the bold active sort key first in both selected and opened rows: `Name Â· Type Â· IP`, `Type Â· Name Â· IP`, or `IP Â· Name Â· Type`, while retaining fallback styling, ellipsis/tooltips, bounded scrolling, keyboard operation and outside-click closing.
 - Added persistent per-view model/type multi-filters with All/None controls and corrected their popovers to stay left-anchored, width-bounded and fully readable inside the editor dialog; existing Maintenance status filters combine with them. Manual refresh preserves sort, type/status filters, selection and scroll.
 - Added class-wide Maintenance checks, updates and reboots through editor buttons and `msg.deviceClass`, retaining dry-run, confirmation, policy, timeout and rolling-execution safeguards.
 - Expanded Config class management with effective maintenance-window summaries, assigned-device membership and each member's next planned reboot.
@@ -74,7 +82,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Separate Firmware, Temperature, Offline/Recovery, Trends, Resources and Electrical card groups, localized titles/explanations, Critical/Warning/Info/Cleared styling and additive `humanSummary` output metadata.
 - Browser-behavior regression tests that click every result tab, verify panel switching and endpoint calls, and exercise loading, error, empty and rendered-finding states in English plus localization contract checks for German.
 - Functional bilingual Maintenance editor navigation with Settings, Current Status, Device Overview and History; policy-aware per-device firmware/check/update/error/recovery fields, filters, bounded persisted run history and `shelly-admin.read`-protected no-store endpoints.
-- Regression coverage proving that Monitor and Maintenance tabs do not schedule periodic editor refresh, load only on first selection/reopen/manual Refresh, keep filters/selection/scroll where possible and render missing values as Not available/Nicht verfügbar.
+- Regression coverage proving that Monitor and Maintenance tabs do not schedule periodic editor refresh, load only on first selection/reopen/manual Refresh, keep filters/selection/scroll where possible and render missing values as Not available/Nicht verfÃ¼gbar.
 
 ### Changed
 
@@ -86,7 +94,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Compatibility and safety
 
-- Existing node types, three-output wiring, state schema 2, Gen1–Gen4 support, history/baselines, recovery, anomaly categories, Stable/Beta policy and temperature safety behavior remain intact.
+- Existing node types, three-output wiring, state schema 2, Gen1â€“Gen4 support, history/baselines, recovery, anomaly categories, Stable/Beta policy and temperature safety behavior remain intact.
 - Real update/reboot retains exact-selection/allow-all, dry-run and confirmation gates. Device-side operations already accepted before cancellation are not claimed to be rolled back.
 
 ## [0.2.0] - 2026-10-02
@@ -112,7 +120,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Compatibility and safety
 
-- Existing node types, output counts, Gen1–Gen4 handling, Stable/Beta policy, Context API persistence, structured errors and exact-device shutdown opt-in remain intact.
+- Existing node types, output counts, Gen1â€“Gen4 handling, Stable/Beta policy, Context API persistence, structured errors and exact-device shutdown opt-in remain intact.
 - No MQTT dependency, automatic re-enable, opaque health grade, defect claim or guaranteed failure prediction was introduced.
 
 ## [0.1.4.1] - 2026-10-02
@@ -139,7 +147,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- Added the configuration-node field **Firmware Check Timeout (ms)** with a documented 2500 ms default and an enforced 250–60000 ms range.
+- Added the configuration-node field **Firmware Check Timeout (ms)** with a documented 2500 ms default and an enforced 250â€“60000 ms range.
 - Propagated the firmware timeout to Gen1 and Gen2+ firmware API requests and the complete per-device check guard; optional `msg.firmwareCheckTimeoutMs` override is supported.
 - Added a structured `completion` record listing checked devices, available updates, timeouts, errors, unprocessed devices and controlled termination details.
 - Added English/German editor labels, help text, README documentation, examples and regression tests for the new timeout, timeout/error continuation, full processing and recovery/error cleanup.
@@ -171,7 +179,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Compatibility and safety
 
-- Retained Node-RED Context API-only persistence, actual-store enumeration, durable `file` store reporting, persistent inventory, generation 1–4 discovery through the Gen1/Gen2+ APIs, structured outputs and no built-in MQTT dependency.
+- Retained Node-RED Context API-only persistence, actual-store enumeration, durable `file` store reporting, persistent inventory, generation 1â€“4 discovery through the Gen1/Gen2+ APIs, structured outputs and no built-in MQTT dependency.
 - Retained exact-device opt-in for automatic temperature shutdown, no automatic re-enable, and the certified-fire-protection disclaimer.
 
 ## [0.1.1] - 2026-10-02
