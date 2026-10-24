@@ -9,7 +9,7 @@ All JSON files are complete Node-RED flows: **Menu → Import → Clipboard/File
 | `03-complete-operations-en.json` | Full English operations flow with action injectors, cancellation, status, notification routing, dashboard, debugging, firmware workflows, recovery, temperature, anomaly and trend handling |
 | `04-kompletter-betrieb-de.json` | Functionally equivalent full German flow |
 | `05-notify-routing.json` | Minimal routing example that forwards only observations with `notify === true`; connect its last node to an approved Signal sender |
-| `06-fleet-dashboard-flowfuse.json` | Bilingual (EN/DE) fleet dashboard for FlowFuse Dashboard 2.0; requires `@flowfuse/node-red-dashboard` |
+| `06-fleet-dashboard-flowfuse.json` | Bilingual (EN/DE) fleet dashboard for FlowFuse Dashboard 2.0 with switching of relays and plugs; requires `@flowfuse/node-red-dashboard` |
 
 ## Complete flow walkthrough
 
@@ -27,20 +27,23 @@ The editor Start/Cancel controls operate only after the node has been deployed. 
 
 All example Config nodes persist `showBetaFirmwareNotices:false`; enable it only when one beta-only notice per device/version is wanted. Warning/Critical observations provide `uptimeSec`, `uptimeText`, and `uptimeTextDe`. The complete English/German flows and `05-notify-routing.json` build notification text with human-readable uptime and keep the `notify === true` gate.
 
+
 ## Fleet dashboard (FlowFuse Dashboard 2.0)
 
-`06-fleet-dashboard-flowfuse.json` is an alternative to the core-node dashboard of examples 03/04. It renders the output of your existing discovery, monitor and maintenance nodes in [FlowFuse Dashboard 2.0](https://dashboard.flowfuse.com/). No additional config node and no additional scan are required.
+![Shelly fleet dashboard](https://raw.githubusercontent.com/impact0815/node-red-contrib-shelly-admin/main/docs/images/fleet-dashboard.jpg)
+
+`06-fleet-dashboard-flowfuse.json` is an alternative to the core-node dashboard of examples 03/04. It renders the output of your existing discovery, monitor and maintenance nodes in [FlowFuse Dashboard 2.0](https://dashboard.flowfuse.com/) and lets you switch relays and plugs. No additional config node and no additional scan are required.
 
 ### Features
 
-- **KPI header:** online, offline, alerts, available updates, total power, hottest device; click a KPI to filter.
+- **KPI header:** online, offline, switched-on channels, alerts, available updates, total power, hottest device; click a KPI to filter.
 - **Run status** with progress for discovery, monitor and maintenance.
-- **Views:** cards, sortable table, alerts (active observations, lifecycle history, technical errors) and firmware (current/target version, beta offers, dry-run and update for selected devices).
-- **Search, filter, sort, group:** full-text search across name, IP, model, app, ID and MAC; filters for device type, generation, device class and status; 12 sort keys including numeric IP sorting; grouping by device type, generation, device class or status.
-- **Device details:** master data and metrics (missing values are shown as "not available", never as 0), 24 h sparklines for temperature, power and Wi-Fi, active observations, link to the device web UI, poll, firmware check, reboot, update and raw data.
-- **Languages:** English and German, switchable in the header and stored in the browser. Numbers, dates and relative times follow the selected language; observation texts use `summaryText` or `summaryTextDe`.
-- **Overview card** for a dashboard start page.
-- Observations are displayed regardless of `notify`; use `05-notify-routing.json` for notifications.
+- **Switching:** relays and plugs with up to 4 channels, switched directly via the local Shelly API. Channel names from the Shelly app are shown, the button reflects the new state immediately and is confirmed by reading the device back. Devices of class *critical* need a second click.
+- **Power values:** per-channel power (Gen2+ `switch:N`/`pm1:N`/`em:N`/`em1:N`, Gen1 `meters`/`emeters`) is summed per device; devices without metering show no value instead of 0 W.
+- **Views:** cards, sortable table (incl. switch column), alerts (active observations, lifecycle history, technical errors) and firmware (current/target version, beta offers, dry-run and update for selected devices).
+- **Search, filter, sort, group:** full-text search across name, IP, model, app, ID and MAC; filters for device type, generation, device class and status; 13 sort keys including numeric IP sorting; grouping by device type, generation, device class or status.
+- **Device details:** master data and metrics (missing values are shown as "not available", never as 0), switch channels with power, voltage, current and energy, 24 h sparklines for temperature, power and Wi-Fi, active observations, link to the device web UI, poll, firmware check, reboot, update and raw data.
+- **Languages:** English and German, switchable in the header and stored in the browser; the browser language is used by default. Numbers, dates and relative times follow the selected language; observation texts use `summaryText` or `summaryTextDe`.
 
 ### Device classification
 
@@ -50,17 +53,17 @@ Devices are grouped primarily by their **Shelly model code**. For Gen2+ (`SN` Pl
 |---|---|---|
 | `SW` | Relay / switch | `SNSW-001P8EU` (Plus 1PM Mini), `S3SW-…` (1PM Gen3) |
 | `PM`, `EM` | Energy meter | `S3PM-001PCEU16` (PM Mini Gen3), `S4EM-001PXCEU16` (EM Mini Gen4), `SPEM-…` (Pro 3EM) |
-| `PL` | Plug | `SNPL-…` (Plus Plug S) |
+| `PL` | Plug | `SNPL-…` (Plus Plug S), `S4PL-…` (Power Strip Gen4) |
 | `DM` / `DC` | Dimmer / RGBW | `SNDM-…`, `SNDC-…` |
 | `SN` | Sensor (`SNSN-0024X` i4 as input) | `SNSN-0013A` (Plus H&T) |
 
-Gen1 devices are matched by their `SH…` prefixes. Devices with a cover profile are shown as covers. Without a model code, the app name and finally the model name are used: "1PM/2PM" counts as a switch with metering, "PM/EM" without a preceding digit as a meter.
+Gen1 devices are matched by their `SH…` prefixes. Devices with a cover profile are shown as covers and are not switchable. Without a model code, the app name and finally the model name are used: "1PM/2PM" counts as a switch with metering, "PM/EM" without a preceding digit as a meter.
 
 ### Setup
 
 1. Install the dashboard package: `npm install @flowfuse/node-red-dashboard`
 2. Import `06-fleet-dashboard-flowfuse.json` and deploy.
-3. Move the link-out nodes **"Shelly → Dashboard …"** into the tab containing your shelly-admin nodes (`Ctrl+X`, `Ctrl+V`; link connections are kept) and connect them:
+3. Move the seven link-out nodes **"Shelly → Dashboard …"** into the tab containing your shelly-admin nodes (`Ctrl+X`, `Ctrl+V`; link connections are kept) and connect them:
 
    | Node | Output 1 | Output 2 | Output 3 |
    |---|---|---|---|
@@ -68,8 +71,26 @@ Gen1 devices are matched by their `SH…` prefixes. Devices with a cover profile
    | Monitor | Health | Alerts | Errors |
    | Maintenance | Maintenance result | Maintenance progress | Errors |
 
-4. Move the link-in nodes **"Dashboard command → …"** into the same tab and connect each to the **input** of the matching discovery, monitor or maintenance node.
-5. Deploy, open `/dashboard/shellies` and click **Check inventory**.
+4. Move the three link-in nodes **"Dashboard command → …"** into the same tab and connect each to the **input** of the matching discovery, monitor or maintenance node.
+5. Deploy, open `/dashboard/shellies` and click **Check inventory**. Switch buttons appear after about 10 seconds.
+
+Only one `ui-base` is supported per Node-RED instance. If you already use Dashboard 2.0, delete the imported `ui-base` "Shelly Admin" from the configuration nodes and assign the page "Shellies" to your own dashboard.
+
+### Switching
+
+Switching does not use the shelly-admin nodes; the flow talks to the devices directly:
+
+| | Read state | Channel names | Switch |
+|---|---|---|---|
+| Gen2+ | `/rpc/Shelly.GetStatus` | `/rpc/Shelly.GetConfig` | `/rpc/Switch.Set?id=N&on=true` |
+| Gen1 | `/status` | `/settings` | `/relay/N?turn=on` |
+
+- The state is read every 30 seconds (max. 5 requests per second), channel names every 6 hours.
+- Only relays and plugs, only known channels and only online devices can be switched; the checks run server-side in the flow.
+- Assign the device class *critical* to devices that must not be switched off by accident (e.g. the plug of your router or Node-RED host); they require a second click.
+- **Password-protected devices:** set authentication in the **"Shelly HTTP"** node – *Digest* for Gen2+, *Basic* for Gen1, user `admin`. This works when all devices share the same password.
+
+Switching does not require the maintenance unlock; that remains reserved for firmware updates and reboots.
 
 ### Safety
 
@@ -78,6 +99,7 @@ Gen1 devices are matched by their `SH…` prefixes. Devices with a cover profile
 - **Two-step confirmation** in the UI, validated again server-side in the flow.
 - The maintenance node receives `confirm:true`; its Stable-only default policy still applies.
 - Firmware check and dry-run are read-only. "Remove from dashboard" only hides a device in the dashboard; the inventory is unchanged.
+- Observations are displayed regardless of `notify`; use `05-notify-routing.json` for notifications.
 
 ### Persistence
 
@@ -95,7 +117,9 @@ contextStorage: {
 | Symptom | Cause / solution |
 |---|---|
 | "No devices yet" | Link-out nodes not connected, or no inventory run completed yet. Click **Check inventory**. |
-| Metrics missing for a device | The device does not report them, or the payload uses another field name. Use **Show raw data** in the detail view and open an issue. |
+| Power shows 0 W or is missing | The device does not meter, or the payload uses another structure. Enable the debug node **"Diagnostics: device without power"**, click **Poll now** and open an issue with the output. |
+| No switch buttons | State not read yet (wait 30 s or click **Read state** in the detail view), or the device is not classified as relay/plug. |
+| "Device requires authentication" | Set authentication in the **"Shelly HTTP"** node (see *Switching*). |
 | Device in the wrong category | Note **Model / code** and **App / profile** from the detail view and open an issue. |
 | Update/reboot button disabled | Click **Unlock maintenance** first. |
-| "not properly configured" after import | Assign the `Shellies` page to your dashboard (`ui-base`) and the groups to their pages. |
+| "not properly configured" after import | Assign the `Shellies` page to your dashboard (`ui-base`) and the group to the page. |
