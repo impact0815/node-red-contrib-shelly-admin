@@ -24,6 +24,14 @@ Monitor **Gerätedetails** bietet **Alle Daten neu laden** für einen frischen G
 
 Die code- und testgestützte Bewertung mit bestätigten Korrekturen, Restrisiken und Architekturvorschlägen steht in [docs/ARCHITECTURE-REVIEW-0.5.1.md](docs/ARCHITECTURE-REVIEW-0.5.1.md).
 
+## Flotten-Dashboard
+
+![Shelly-Flotten-Dashboard](https://raw.githubusercontent.com/impact0815/node-red-contrib-shelly-admin/main/docs/images/fleet-dashboard.jpg)
+
+Ein direkt importierbares, zweisprachiges (DE/EN) Dashboard für [FlowFuse Dashboard 2.0](https://dashboard.flowfuse.com/) auf Basis der Discovery-, Monitor- und Maintenance-Nodes: Flotten-Kennzahlen, Kachel- und Tabellenansicht, Suche, Filter und Gruppierung, Hinweise, Firmware-Übersicht, 24-h-Verlauf je Gerät sowie Schalten von Relais und Steckdosen mit bis zu 4 Kanälen. Firmwareupdates und Neustarts bleiben hinter einer ausdrücklichen Wartungsfreigabe.
+
+→ [`examples/06-fleet-dashboard-flowfuse.json`](examples/06-fleet-dashboard-flowfuse.json) · [Einrichtung und Details](examples/README.de.md#flotten-dashboard-flowfuse-dashboard-20)
+
 ## Sicherheit und Geltungsbereich
 
 > **⚠️ Nutzung auf eigene Gefahr – keine Gewährleistung.** Dies ist ein inoffizielles Community-Projekt ohne Verbindung zu oder Unterstützung durch Shelly beziehungsweise Allterco. Die Software wird „wie besehen“ bereitgestellt.
