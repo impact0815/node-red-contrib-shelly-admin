@@ -24,6 +24,14 @@ Monitor **Device Details** adds **Reload all data** for a fresh device probe. If
 
 A code- and test-based assessment, confirmed fixes, remaining risks and future architecture recommendations are in [docs/ARCHITECTURE-REVIEW-0.5.1.md](docs/ARCHITECTURE-REVIEW-0.5.1.md).
 
+## Fleet dashboard
+
+![Shelly fleet dashboard](https://raw.githubusercontent.com/impact0815/node-red-contrib-shelly-admin/main/docs/images/fleet-dashboard.jpg)
+
+A ready-to-import, bilingual (EN/DE) dashboard for [FlowFuse Dashboard 2.0](https://dashboard.flowfuse.com/) built on the outputs of the discovery, monitor and maintenance nodes: fleet KPIs, cards and table view, search, filters and grouping, alerts, firmware overview, 24 h history per device and switching of relays and plugs with up to 4 channels. Firmware updates and reboots stay behind an explicit maintenance unlock.
+
+→ [`examples/06-fleet-dashboard-flowfuse.json`](examples/06-fleet-dashboard-flowfuse.json) · [setup and details](examples/README.md#fleet-dashboard-flowfuse-dashboard-20)
+
 ## Safety and scope
 
 > **⚠️ Use at your own risk – no warranty.** This is an unofficial community project and is not affiliated with, endorsed by, or supported by Shelly or Allterco. It is supplied “as is”.
