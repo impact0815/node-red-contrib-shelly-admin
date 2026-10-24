@@ -1,27 +1,96 @@
 # Importierbare Beispiele
 
-Alle JSON-Dateien sind vollständige Node-RED-Flows: **Menü → Importieren → Zwischenablage/Datei → Importieren → Deployen**. Vor dem Deploy die Shelly-Administrationskonfiguration öffnen und `targets` auf Netze begrenzen, deren Scan autorisiert ist. Für neustartbeständiges Inventar und Historie einen `localfilesystem`-Context-Store wählen.
+Alle JSON-Dateien sind vollständige Node-RED-Flows: **Menü → Import → Zwischenablage/Datei → Importieren → Deploy**.
+
+Öffne vor dem Deploy die Shelly-Administrations-Config-Node und beschränke die Ziele auf Netzwerke, die du scannen darfst. Wähle einen `localfilesystem`-Context-Store, damit Inventar und Verlauf einen Neustart überstehen.
 
 | Flow | Zweck |
 |---|---|
 | `01-discovery-monitor.json` | Kompakter Einstieg für Discovery und Monitoring |
 | `02-safe-maintenance.json` | Kompakter Einstieg für abgesicherte Wartung |
-| `03-complete-operations-en.json` | Vollständiger englischer Betriebsflow mit Actions, Abbruch, Status, Benachrichtigungsrouting, Dashboard, Debugging, Firmware, Recovery, Temperatur, Anomalien und Trends |
+| `03-complete-operations-en.json` | Vollständiger englischer Betriebs-Flow mit Aktions-Injects, Abbruch, Status, Benachrichtigungs-Routing, Dashboard, Debugging, Firmware-Workflows, Recovery, Temperatur-, Anomalie- und Trendbehandlung |
 | `04-kompletter-betrieb-de.json` | Funktional gleichwertiger vollständiger deutscher Flow |
-| `05-notify-routing.json` | Minimaler Routing-Flow, der nur Observations mit `notify === true` weitergibt; den letzten Node mit einem freigegebenen Signal-Sender verbinden |
+| `05-fleet-dashboard-flowfuse.json` | Zweisprachiges (DE/EN) Flotten-Dashboard für FlowFuse Dashboard 2.0 – benötigt `@flowfuse/node-red-dashboard` |
 
-## Ablauf des vollständigen Flows
+## Rundgang durch den vollständigen Flow
 
-1. **Discovery:** `action:"scan"` und `mode:"full"` starten; `action:"cancel"` bricht ab. Inventar, Lifecycle und Fortschritt werden angezeigt und für das Dashboard gespeichert.
-2. **Monitor:** sofort starten, abbrechen, Status abfragen oder den periodischen Lauf aktivieren/deaktivieren. Die deployte Node bietet die anklickbaren Ansichten **Einstellungen**, **Aktuelle Befunde**, **Historie** und **Gerätedetails**. Eine Ergebnisansicht lädt beim ersten Wechsel und danach nur über ihre Aktualisieren-Schaltfläche; es gibt kein periodisches Editor-Refresh. Lesegeschützte Admin-Endpunkte zeigen Lade-, Fehler- und Leerzustände. Der Health-Pfad gibt kompakt `summaryText`/`summaryTextDe`/`humanSummary`/`findingsSummary`/`cards` aus; der Router behält strukturierte Observations für Benachrichtigung, Recovery, Temperatur, Ressourcen, elektrische Beobachtungen und Trends.
-3. **Benachrichtigungen:** Warnungen/kritische `opened`- oder `updated`-Observations erzeugen eine Node-RED-Runtime-Warnung und eine Debug-Nachricht. Die Function-Node kann durch freigegebene E-Mail-, Teams-, MQTT- oder Webhook-Nodes ergänzt werden.
-4. **Dashboard:** `/shelly-admin-dashboard-de` (oder `-en`) öffnen. Es nutzt nur Node-RED-Core-Nodes und aktualisiert sich alle 15 Sekunden.
-5. **Firmware:** Die Prüfung ist lesend. Die deployte Wartungs-Node bietet **Einstellungen**, **Aktueller Status**, **Geräteübersicht** und **Historie**, ebenfalls mit einmaligem Laden beziehungsweise manueller Aktualisierung. Die Geräteübersicht zeigt verständliche Firmware-/Update-/Recovery-Felder und Filter für Update verfügbar, Fehler, Offline, Erfolgreich aktualisiert und Übersprungen. Ein Update prüft zuerst alle ausgewählten Geräte und verarbeitet danach ausschließlich policy-berechtigte Kandidaten. Der Dry-run liefert `plannedUpdates` ohne Update-, Staffel- oder Validierungswartezeit. Der echte Updatepfad bleibt gesperrt, bis der Flow-Context `shellyAdminArmRealUpdate` exakt `true` ist, verlangt `confirm:true` und verwendet bis zur bewussten Änderung die nicht passende Geräte-ID `REPLACE-WITH-EXACT-DEVICE-ID`.
-6. **Recovery und Sicherheit:** Recovery-Lifecycle, Temperaturwarnungen, automatische Aktionsdatensätze, Firmware-Observations, Neustartmuster, Ressourcen-/elektrische Anomalien sowie Latenz-/Temperaturtrends werden an benannte Debug-Nodes geroutet.
+- **Discovery:** `action:"scan"` mit `mode:"full"` injizieren; Abbruch mit `action:"cancel"`. Inventar und Lifecycle/Fortschritt werden angezeigt und für das Dashboard zwischengespeichert.
+- **Monitor:** sofort ausführen, abbrechen, Status abfragen oder den periodischen Zeitplan ein-/ausschalten. Öffne die deployte Node für die anklickbaren Ansichten Einstellungen, Aktuelle Befunde, Verlauf und Gerätedetails. Eine Ergebnisansicht lädt einmal bei der ersten Auswahl und danach nur über ihren Aktualisieren-Button; es gibt keine periodische Aktualisierung im Editor. Die lesegeschützten Admin-Endpunkte zeigen Lade-, Fehler- und Leerzustände sichtbar an. Der Health-Pfad liefert kompakte Felder `summaryText` / `summaryTextDe` / `humanSummary` / `findingsSummary` / `cards`, während der Router strukturierte Observations für Benachrichtigung, Recovery, Temperatur-, Ressourcen-, elektrische und Trendbehandlung beibehält.
+- **Benachrichtigungen:** geöffnete oder aktualisierte Observations mit Schwere warning/critical erzeugen eine Node-RED-Laufzeitwarnung und eine Debug-Meldung. Ersetze oder erweitere diese Function durch deine freigegebene E-Mail-, Teams-, MQTT- oder Webhook-Node.
+- **Dashboard:** im Browser `/shelly-admin-dashboard-de` (oder `-en`) öffnen. Es nutzt nur Node-RED-Core-Nodes (HTTP/Function/Response) und aktualisiert sich alle 15 Sekunden.
+- **Firmware:** die Prüfung ist nur lesend. Öffne die deployte Maintenance-Node für Einstellungen, Aktueller Status, Geräteübersicht und Verlauf. Diese Ansichten verwenden dasselbe einmalige/manuelle Aktualisieren. Die Geräteübersicht bietet lesbare Firmware-/Update-/Recovery-Felder sowie die Filter Update verfügbar, Fehler, Offline, Erfolgreich aktualisiert und Übersprungen. Ein Update prüft zuerst alle ausgewählten Geräte und verarbeitet danach nur richtlinienkonforme Kandidaten. Der Dry-run liefert `plannedUpdates` und löst kein Update, keine Staffelung und keine Validierungswartezeit aus. Der echte Update-Pfad bleibt gesperrt, solange der Flow-Context `shellyAdminArmRealUpdate` nicht exakt `true` ist; er erfordert `confirm:true` und zielt weiterhin auf den nicht passenden Platzhalter `REPLACE-WITH-EXACT-DEVICE-ID`, bis dieser bewusst geändert wird.
+- **Recovery und Sicherheit:** Recovery-Lifecycle, Temperaturwarnungen, Protokolle automatischer Aktionen, Firmware-Observations, Neustartmuster, Ressourcen-/elektrische Anomalien sowie Latenz-/Temperaturtrends werden an beschriftete Debug-Nodes geleitet.
 
-Die Start-/Abbrechen-Schaltflächen im Editor funktionieren nach dem Deploy und entsprechen Nachrichten mit `msg.action`.
+Die Start-/Abbrechen-Schaltflächen im Editor funktionieren erst, wenn die Node deployt ist. Ihre Aktionen entsprechen Nachrichten mit `msg.action`.
 
+## Flotten-Dashboard (FlowFuse Dashboard 2.0)
 
-## 0.5.0: Uptime- und Beta-Hinweis-Felder
+`05-fleet-dashboard-flowfuse.json` ist eine Alternative zum Core-Node-Dashboard der Beispiele 03/04. Es stellt die Ausgaben deiner vorhandenen Discovery-, Monitor- und Maintenance-Nodes in [FlowFuse Dashboard 2.0](https://dashboard.flowfuse.com/) dar. Es wird keine zusätzliche Config-Node und kein zusätzlicher Scan benötigt.
 
-Alle Beispiel-Config-Nodes speichern `showBetaFirmwareNotices:false`; nur aktivieren, wenn je Gerät/Beta-Version ein einmaliger Beta-only-Hinweis gewünscht ist. Warning-/Critical-Observations liefern `uptimeSec`, `uptimeText` und `uptimeTextDe`. Die vollständigen englischen/deutschen Flows und `05-notify-routing.json` erzeugen Benachrichtigungstext mit menschenlesbarer Uptime und behalten die Schranke `notify === true` bei.
+### Funktionen
+
+- **Kennzahlen-Kopf:** online, offline, Hinweise, verfügbare Updates, Gesamtleistung, wärmstes Gerät; Klick auf eine Kennzahl filtert.
+- **Laufstatus** mit Fortschritt für Discovery, Monitor und Wartung.
+- **Ansichten:** Kacheln, sortierbare Tabelle, Hinweise (aktive Observations, Lifecycle-Verlauf, technische Fehler) und Firmware (aktuelle/Ziel-Version, Beta-Angebote, Dry-run und Update für ausgewählte Geräte).
+- **Suchen, Filtern, Sortieren, Gruppieren:** Volltextsuche über Name, IP, Modell, App, ID und MAC; Filter nach Geräteart, Generation, Geräteklasse und Status; 12 Sortierungen inklusive numerischer IP-Sortierung; Gruppierung nach Geräteart, Generation, Geräteklasse oder Status.
+- **Gerätedetails:** Stammdaten und Messwerte (fehlende Werte erscheinen als „Nicht verfügbar“, nie als 0), 24-h-Verläufe für Temperatur, Leistung und WLAN, aktive Observations, Link zur Weboberfläche, Abfragen, Firmwareprüfung, Neustart, Update und Rohdaten.
+- **Sprachen:** Deutsch und Englisch, im Kopf umschaltbar und im Browser gespeichert. Zahlen, Datumsangaben und relative Zeiten folgen der gewählten Sprache; Observation-Texte nutzen `summaryTextDe` bzw. `summaryText`.
+- **Übersichtskarte** für eine Dashboard-Startseite.
+
+### Geräte-Einordnung
+
+Geräte werden vorrangig über ihren **Shelly-Modellcode** eingeordnet. Bei Gen2+ (`SN` Plus, `SP` Pro, `S3` Gen3, `S4` Gen4) bestimmen die zwei Buchstaben nach dem Präfix die Geräteart:
+
+| Code | Geräteart | Beispiele |
+|---|---|---|
+| `SW` | Relais / Schalter | `SNSW-001P8EU` (Plus 1PM Mini), `S3SW-…` (1PM Gen3) |
+| `PM`, `EM` | Energiemessung | `S3PM-001PCEU16` (PM Mini Gen3), `S4EM-001PXCEU16` (EM Mini Gen4), `SPEM-…` (Pro 3EM) |
+| `PL` | Steckdose | `SNPL-…` (Plus Plug S) |
+| `DM` / `DC` | Dimmer / RGBW | `SNDM-…`, `SNDC-…` |
+| `SN` | Sensor (`SNSN-0024X` i4 als Eingang) | `SNSN-0013A` (Plus H&T) |
+
+Gen1-Geräte werden über ihre `SH…`-Präfixe erkannt. Geräte im Rollladenprofil erscheinen als Rollläden. Ohne Modellcode werden App-Name und zuletzt Modellname verwendet: „1PM/2PM“ gilt als Schalter mit Messung, „PM/EM“ ohne vorangestellte Ziffer als Messgerät.
+
+### Einrichtung
+
+1. Dashboard-Paket installieren: `npm install @flowfuse/node-red-dashboard`
+2. `05-fleet-dashboard-flowfuse.json` importieren und deployen.
+3. Die Link-Out-Nodes **„Shelly → Dashboard …“** in den Tab mit deinen shelly-admin-Nodes verschieben (`Ctrl+X`, `Ctrl+V`; Link-Verbindungen bleiben erhalten) und verbinden:
+
+   | Node | Ausgang 1 | Ausgang 2 | Ausgang 3 |
+   |---|---|---|---|
+   | Discovery | Inventar | Ereignisse | Fehler |
+   | Monitor | Health | Hinweise | Fehler |
+   | Maintenance | Wartung Ergebnis | Wartung Fortschritt | Fehler |
+
+4. Die Link-In-Nodes **„Dashboard-Befehl → …“** in denselben Tab verschieben und jeweils mit dem **Eingang** der passenden Discovery-, Monitor- oder Maintenance-Node verbinden.
+5. Deployen, `/dashboard/shellies` öffnen und **Inventar prüfen** klicken.
+
+### Sicherheit
+
+- Firmwareupdates und Neustarts sind nur möglich, solange die **Wartung im Dashboard freigeschaltet** ist (10 Minuten).
+- Nur ausgewählte Geräte, **max. 5 pro Befehl**.
+- **Zweistufige Bestätigung** im Dashboard, zusätzlich serverseitig im Flow geprüft.
+- Die Maintenance-Node erhält `confirm:true`; ihre Standardrichtlinie „nur Stable“ gilt weiterhin.
+- Firmwareprüfung und Dry-run sind nur lesend. „Aus Dashboard entfernen“ blendet ein Gerät nur im Dashboard aus; das Inventar bleibt unverändert.
+
+### Persistenz
+
+Dashboard-Modell und 24-h-Verlauf liegen im Context-Store `file`, mit Rückfall auf den Standard-Store (Daten gehen dann beim Neustart verloren):
+
+```javascript
+contextStorage: {
+    default: { module: "memory" },
+    file: { module: "localfilesystem", config: { flushInterval: 30 } }
+},
+```
+
+### Fehlerbehebung
+
+| Symptom | Ursache / Lösung |
+|---|---|
+| „Noch keine Geräte“ | Link-Out-Nodes nicht verbunden oder noch kein Inventarlauf abgeschlossen. **Inventar prüfen** klicken. |
+| Messwerte fehlen bei einem Gerät | Das Gerät liefert sie nicht, oder die Payload nutzt einen anderen Feldnamen. In der Detailansicht **Rohdaten anzeigen** und ein Issue anlegen. |
+| Gerät in falscher Kategorie | **Modell / Code** und **App / Profil** aus der Detailansicht notieren und ein Issue anlegen. |
+| Update-/Neustart-Button deaktiviert | Zuerst **Wartung freischalten** klicken. |
+| „not properly configured“ nach dem Import | Seite `Shellies` deinem Dashboard (`ui-base`) und die Gruppen ihren Seiten zuweisen. |
