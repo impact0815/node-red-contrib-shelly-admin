@@ -1,6 +1,6 @@
 {
   "name": "@impact0815/node-red-contrib-shelly-admin",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Local Shelly Gen1-Gen4 discovery, three-level per-device policy resolution, durable history, lifecycle observations, firmware policy, and safeguarded Node-RED maintenance.",
   "keywords": [
     "node-red",
