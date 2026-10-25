@@ -10,6 +10,7 @@ Alle JSON-Dateien sind vollständige Node-RED-Flows: **Menü → Import → Zwis
 | `04-kompletter-betrieb-de.json` | Funktional gleichwertiger vollständiger deutscher Flow |
 | `05-notify-routing.json` | Minimales Routing-Beispiel, das nur Observations mit `notify === true` weiterleitet; den letzten Node mit einem freigegebenen Signal-Sender verbinden |
 | `06-fleet-dashboard-flowfuse.json` | Zweisprachiges (DE/EN) Flotten-Dashboard für FlowFuse Dashboard 2.0 mit Schalten von Relais und Steckdosen; benötigt `@flowfuse/node-red-dashboard` |
+| `07-pv-string-diagnostics-flowfuse.json` | Optionales FlowFuse-Dashboard-2.0-Add-on zum Vergleich von zwei PV-Strings mit unterschiedlicher installierter DC-Leistung. Normalisiert die aktuelle Stringleistung anhand der installierten Wp-Leistung, glättet mehrere qualifizierte Messwerte, erkennt auffällige Abweichungen und speichert die String-Konfiguration dauerhaft. |
 
 ## Rundgang durch den vollständigen Flow
 
@@ -22,6 +23,11 @@ Alle JSON-Dateien sind vollständige Node-RED-Flows: **Menü → Import → Zwis
 
 Die Start-/Abbrechen-Schaltflächen im Editor funktionieren erst, wenn die Node deployt ist. Ihre Aktionen entsprechen Nachrichten mit `msg.action`.
 
+### PV-String-Diagnose
+
+Eine ausführliche Beschreibung der Einrichtung, Konfiguration und Bewertungsmethode findest du hier:
+
+[`07-pv-string-diagnostics-README.md`](07-pv-string-diagnostics-README.md)
 
 ## Uptime- und Beta-Hinweis-Felder ab 0.5.0
 

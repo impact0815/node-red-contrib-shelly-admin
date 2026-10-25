@@ -71,6 +71,40 @@ Der Abbruch wird durch Parallelisierung, HTTP-Requests, Firmwareprüfungen, Vali
 
 Der vollständige Message-Vertrag je Node, Lifecycle-Datensätze, Output-Topics, Recovery-Beispiele, Firmwareabläufe und Abbruchsemantik stehen in [docs/MESSAGE-API.de.md](docs/MESSAGE-API.de.md) ([English](docs/MESSAGE-API.md)).
 
+### Optionale PV-String-Diagnose
+
+Ein optionales Add-on für FlowFuse Dashboard 2.0 ermöglicht den Vergleich von zwei PV-Strings auch dann, wenn unterschiedlich viel PV-Leistung an den beiden MPPT-Eingängen installiert ist.
+
+Statt die aktuelle Leistung der Strings direkt miteinander zu vergleichen, wird die Leistung jedes Strings zunächst anhand seiner konfigurierten installierten Leistung normalisiert.
+
+Beispiel:
+
+- PV1: 10 × 405 Wp = 4,05 kWp
+- PV2: 8 × 405 Wp = 3,24 kWp
+- Erwartetes Leistungsverhältnis unter vergleichbaren Bedingungen: 1,25 : 1
+
+Bei beispielsweise 2.025 W an PV1 und 1.620 W an PV2 liefern beide Strings jeweils 50 % ihrer installierten Leistung. Das Verhältnis ist damit trotz der unterschiedlichen absoluten Leistung plausibel.
+
+Das Add-on berücksichtigt mehrere qualifizierte Messwerte, um kurzfristige Einflüsse durch Wolken, Verschattung oder unterschiedliche MPPT-Reaktionen zu reduzieren. Bei einer auffälligen Abweichung wird zusätzlich angezeigt, welcher String relativ schwächer arbeitet.
+
+Direkt im Dashboard konfigurierbar sind:
+
+- Name von String 1 und String 2
+- Anzahl der PV-Module je String
+- Nennleistung eines Moduls in Wp
+- Mindest-Gesamtleistung für eine Bewertung
+- Warnschwelle
+- kritische Schwelle
+- Anzahl der Messwerte zur Glättung
+
+Die Konfiguration wird persistent im Node-RED-Context gespeichert.
+
+> **Hinweis:** Die Auswertung ist eine Plausibilitätsprüfung und keine elektrische Fehlerdiagnose. Unterschiedliche Ausrichtung, Neigung, Verschattung, Modultemperatur oder Modultoleranzen können auch bei einer technisch einwandfreien Anlage zu unterschiedlichen spezifischen Stringleistungen führen.
+
+→ [`examples/07-pv-string-diagnostics-flowfuse.json`](examples/07-pv-string-diagnostics-flowfuse.json)  
+→ [`examples/07-pv-string-diagnostics-README.md`](examples/07-pv-string-diagnostics-README.md)
+
+
 ## Installation
 
 Im Node-RED-Benutzerverzeichnis:
