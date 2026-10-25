@@ -10,7 +10,6 @@ All JSON files are complete Node-RED flows: **Menu → Import → Clipboard/File
 | `04-kompletter-betrieb-de.json` | Functionally equivalent full German flow |
 | `05-notify-routing.json` | Minimal routing example that forwards only observations with `notify === true`; connect its last node to an approved Signal sender |
 | `06-fleet-dashboard-flowfuse.json` | Bilingual (EN/DE) fleet dashboard for FlowFuse Dashboard 2.0 with switching of relays and plugs; requires `@flowfuse/node-red-dashboard` |
-| `07-pv-string-diagnostics-flowfuse.json` | Optional FlowFuse Dashboard 2.0 add-on for comparing two PV strings with different installed DC capacities. Normalizes current string power by installed Wp, smooths several qualified samples, highlights deviations and stores the string configuration persistently. |
 
 ## Complete flow walkthrough
 
@@ -21,11 +20,6 @@ All JSON files are complete Node-RED flows: **Menu → Import → Clipboard/File
 5. **Firmware:** the check is read-only. Open the deployed Maintenance node for **Settings**, **Current Status**, **Device Overview**, and **History**. These views use the same one-time/manual Refresh behavior. Device Overview provides human-readable firmware/update/recovery fields plus Update available, Error, Offline, Successfully updated, and Skipped filters. Update first checks all selected devices and then processes only policy-eligible candidates. The dry-run exposes `plannedUpdates` and causes no update, stagger, or validation wait. The real-update path remains blocked unless flow context `shellyAdminArmRealUpdate` is exactly `true`, requires `confirm:true`, and still targets the non-matching placeholder `REPLACE-WITH-EXACT-DEVICE-ID` until deliberately edited.
 6. **Recovery and safety:** recovery lifecycle, temperature warnings, automatic-action records, firmware observations, restart patterns, resource/electrical anomalies, and latency/temperature trends are routed to labeled Debug nodes.
 
-### PV string diagnostics
-
-For setup, configuration and the comparison method, see:
-
-[`07-pv-string-diagnostics-README.md`](07-pv-string-diagnostics-README.md)
 The editor Start/Cancel controls operate only after the node has been deployed. Their actions are equivalent to messages sent with `msg.action`.
 
 
