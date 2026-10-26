@@ -1,7 +1,7 @@
 # Build and verification information
 
 Build date: 2026-10-10
-Version: 0.5.1
+Version: 0.5.2
 Source baseline: verified complete 0.5.0 project archive (`80218d5a8fea1073638ea795c5e3121c40b5d93042d0d3cbe4005a8db3e2519c`)
 Node.js used for local verification: v24.16.0
 npm used for local verification: 11.19.1
